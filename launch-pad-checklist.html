@@ -69,11 +69,19 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     font-size: 14px;
     line-height: 1.6;
-    padding: 36px 20px 80px;
+    padding: 0 20px 80px;
     -webkit-font-smoothing: antialiased;
   }
 
-  .wrap { max-width: 740px; margin: 0 auto; }
+  .wrap { max-width: 740px; margin: 0 auto; padding-top: 36px; }
+
+  .release-nav { height: 60px; display:flex; align-items:center; margin:0 -20px; padding:0 24px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .release-nav-inner { width:100%; max-width:920px; margin:0 auto; display:flex; align-items:center; gap:12px; }
+  .release-logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
+  .release-logo-img { height:36px; width:auto; flex-shrink:0; }
+  .release-wordmark-img { height:32px; width:auto; }
+  .release-build { border-left:1px solid var(--border); margin-left:4px; padding-left:12px; font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+  @media (max-width:460px) { .release-build { display:none; } }
 
   .back-link {
     display: inline-flex;
@@ -596,6 +604,15 @@
 </style>
 </head>
 <body>
+  <nav class="release-nav">
+    <div class="release-nav-inner">
+      <a class="release-logo" href="index.html">
+        <img src="images/Laminar_pipeline_logo.png" alt="" class="release-logo-img">
+        <img src="images/Laminar_pipeline_wordmark.png" alt="Laminar Pipeline — Business Systems" class="release-wordmark-img">
+      </a>
+      <span class="release-build">Build 0.1.0</span>
+    </div>
+  </nav>
 
 <div class="wrap">
 
