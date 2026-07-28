@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laminar Pipeline — Laminar Business Systems</title>
+<link rel="icon" type="image/png" href="images/Laminar_pipeline_logo.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="index.html">
+      <img src="images/Laminar_pipeline_logo.png" alt="" class="nav-logo-img">
+      <img src="images/Laminar_pipeline_wordmark.png" alt="Laminar Pipeline — Business Systems" class="nav-wordmark-img">
+    </a>
+  </div>
+</nav>
+
+<main class="wrap-wide">
+
+  <div class="eyebrow">Internal Tools</div>
+  <h1 class="page-title" style="font-size:32px;margin-bottom:10px">Laminar Framework</h1>
+  <p class="page-desc" style="max-width:520px;margin-bottom:48px">Operational tools for standardising how Laminar discovers, deploys, validates, and operates client business systems. Select a Playbook to begin or continue a client engagement.</p>
+
+  <div class="section-label">Deployment</div>
+  <div class="playbook-grid">
+
+    <a class="playbook-card" href="playbook.html?playbook=business-launch">
+      <svg class="playbook-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      <div class="playbook-icon">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 10l2 2 4-4"/><rect x="3" y="3" width="14" height="14" rx="3"/>
+        </svg>
+      </div>
+      <div class="playbook-type">Deployment</div>
+      <div class="playbook-name">Business Launch Playbook</div>
+      <div class="playbook-desc">End-to-end delivery from discovery through go-live — domain, website, CRM, Google Business Profile, analytics, and handoff.</div>
+    </a>
+
+    <a class="playbook-card" href="playbook.html?playbook=digital-presence-launch">
+      <svg class="playbook-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      <div class="playbook-icon">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="10" cy="10" r="3"/>
+          <path d="M10 3a7 7 0 1 1 0 14A7 7 0 0 1 10 3z"/>
+          <path d="M3 10h14M10 3c-2 2-3 4.5-3 7s1 5 3 7M10 3c2 2 3 4.5 3 7s-1 5-3 7"/>
+        </svg>
+      </div>
+      <div class="playbook-type">Deployment</div>
+      <div class="playbook-name">Digital Presence Launch Playbook</div>
+      <div class="playbook-desc">Social media account creation, profile branding, Meta Business Suite, Metricool setup, content launch, and training.</div>
+    </a>
+
+  </div>
+
+  <div class="section-label" style="margin-top:36px">Retainer</div>
+  <div class="playbook-grid">
+
+    <a class="playbook-card" href="playbook.html?playbook=operating-partnership">
+      <svg class="playbook-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+      <div class="playbook-icon">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9a7 7 0 0 1 14 0"/><path d="M17 11a7 7 0 0 1-14 0"/><polyline points="17 5 17 9 13 9"/><polyline points="3 15 3 11 7 11"/>
+        </svg>
+      </div>
+      <div class="playbook-type">Retainer</div>
+      <div class="playbook-name">Operating Partnership Playbook</div>
+      <div class="playbook-desc">Embedded operational systems engagement — assessment, 12-month improvement roadmap, CRM stewardship, workflow design, and ongoing implementation.</div>
+    </a>
+
+  </div>
+
+  <div class="section-label" style="margin-top:36px">Data Management</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh);display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:48px">
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:3px">Backup &amp; Restore</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.5">All project data is stored in this browser. Download a backup to move data between browsers or profiles, or restore from a previous backup.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-ghost" id="btnBackup">Download Backup</button>
+      <button class="btn btn-ghost" id="btnRestore">Restore from File</button>
+    </div>
+    <input type="file" id="restoreFile" accept=".json" style="display:none">
+  </div>
+
+  <div class="section-label">Operations</div>
+  <div class="playbook-grid">
+
+    <div class="playbook-card soon">
+      <span class="soon-badge">Coming Soon</span>
+      <div class="playbook-icon">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 6h12M4 10h8M4 14h5"/>
+        </svg>
+      </div>
+      <div class="playbook-type">Operations</div>
+      <div class="playbook-name">Business Operations Playbook</div>
+      <div class="playbook-desc">Monthly and quarterly operational reviews — uptime, CRM health, lead flow, analytics, SEO, and system documentation.</div>
+    </div>
+
+    <div class="playbook-card soon">
+      <span class="soon-badge">Coming Soon</span>
+      <div class="playbook-icon">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h14M3 10h14M3 14h10"/>
+          <circle cx="16" cy="14" r="2.5"/>
+        </svg>
+      </div>
+      <div class="playbook-type">Operations</div>
+      <div class="playbook-name">Digital Presence Operations Playbook</div>
+      <div class="playbook-desc">Ongoing social media management — content planning, scheduling, platform analytics, and monthly client reporting.</div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+const DATA_KEY = 'lbs-framework-v1';
+
+document.getElementById('btnBackup').onclick = async () => {
+  const data = localStorage.getItem(DATA_KEY);
+  if (!data) { alert('No project data found to back up.'); return; }
+  const d   = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const slug = `laminar-backup-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}-${pad(d.getHours())}-${pad(d.getMinutes())}`;
+
+  if (window.showSaveFilePicker) {
+    try {
+      const handle   = await window.showSaveFilePicker({
+        types: [{ description: 'Laminar Backup', accept: { 'application/json': ['.json'] } }],
+        suggestedName: slug + '.json',
+      });
+      const writable = await handle.createWritable();
+      await writable.write(data);
+      await writable.close();
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      console.error('[Laminar] Save picker failed, falling back to download:', e);
+    }
+  }
+
+  // Fallback — forces save to Downloads (Firefox / Safari)
+  const blob = new Blob([data], { type: 'application/json' });
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = slug + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+document.getElementById('btnRestore').onclick = () => {
+  document.getElementById('restoreFile').click();
+};
+
+document.getElementById('restoreFile').onchange = e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = evt => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      if (!parsed.schemaVersion || !parsed.projects) {
+        alert('This file does not look like a Laminar Pipeline backup.');
+        return;
+      }
+      const existing = localStorage.getItem(DATA_KEY);
+      const projectCount = Object.keys(parsed.projects || {}).length;
+      const msg = existing
+        ? `Restoring will replace all current project data with ${projectCount} project(s) from this backup. This cannot be undone.\n\nContinue?`
+        : `Load ${projectCount} project(s) from this backup?`;
+      if (!confirm(msg)) return;
+      localStorage.setItem(DATA_KEY, evt.target.result);
+      alert(`Restored ${projectCount} project(s). Reload the page or open a playbook to continue.`);
+    } catch {
+      alert('Could not read the file. Make sure it is a valid Laminar Pipeline backup.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+};
+</script>
+</body>
+</html>
