@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Social Media Launch Pad — Laminar Business Systems</title>
+<link rel="icon" type="image/png" href="images/Laminar_pipeline_logo.png">
+<style>
+  :root {
+    --bg: #F2F5F9;
+    --surface: #FFFFFF;
+    --surface2: #F8FAFC;
+    --border: #DCE3EE;
+    --text: #0D1626;
+    --muted: #5A6A85;
+    --accent: #1A5FDB;
+    --accent-lt: #EBF1FD;
+    --accent-dk: #1249B0;
+    --good: #16A34A;
+    --good-lt: #DCFCE7;
+    --danger: #DC2626;
+    --danger-lt: #FEE2E2;
+    --note-bg: #FFFBEB;
+    --note-border: #FCD34D;
+    --r: 8px;
+    --sh: 0 1px 3px rgba(13,22,38,.07), 0 1px 2px rgba(13,22,38,.04);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0C1220; --surface: #161F30; --surface2: #111827; --border: #253047;
+      --text: #DDE6F5; --muted: #7A90B5; --accent: #4B8EFF; --accent-lt: #1A2A47;
+      --accent-dk: #7AADFF; --good: #4ADE80; --good-lt: #0A2A18;
+      --danger: #F87171; --danger-lt: #2A1010; --note-bg: #1C1A0A; --note-border: #92701A;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#F2F5F9; --surface:#FFFFFF; --surface2:#F8FAFC; --border:#DCE3EE;
+    --text:#0D1626; --muted:#5A6A85; --accent:#1A5FDB; --accent-lt:#EBF1FD;
+    --accent-dk:#1249B0; --good:#16A34A; --good-lt:#DCFCE7;
+    --danger:#DC2626; --danger-lt:#FEE2E2; --note-bg:#FFFBEB; --note-border:#FCD34D;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0C1220; --surface:#161F30; --surface2:#111827; --border:#253047;
+    --text:#DDE6F5; --muted:#7A90B5; --accent:#4B8EFF; --accent-lt:#1A2A47;
+    --accent-dk:#7AADFF; --good:#4ADE80; --good-lt:#0A2A18;
+    --danger:#F87171; --danger-lt:#2A1010; --note-bg:#1C1A0A; --note-border:#92701A;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px; line-height: 1.6;
+    padding: 0 20px 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 740px; margin: 0 auto; padding-top: 36px; }
+
+  .release-nav { height:60px; display:flex; align-items:center; margin:0 -20px; padding:0 24px; background:var(--surface); border-bottom:1px solid var(--border); }
+  .release-nav-inner { width:100%; max-width:920px; margin:0 auto; display:flex; align-items:center; gap:12px; }
+  .release-logo { display:flex; align-items:center; gap:12px; text-decoration:none; }
+  .release-logo-img { height:36px; width:auto; flex-shrink:0; }
+  .release-wordmark-img { height:32px; width:auto; }
+  .release-build { border-left:1px solid var(--border); margin-left:4px; padding-left:12px; font-size:10px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+  @media (max-width:460px) { .release-build { display:none; } }
+
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; color: var(--muted);
+    text-decoration: none; margin-bottom: 24px; transition: color .12s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  .doc-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .doc-title { font-size: 26px; font-weight: 700; letter-spacing: -.02em; color: var(--text); line-height: 1.2; text-wrap: balance; margin-bottom: 6px; }
+  .doc-desc { font-size: 13.5px; color: var(--muted); max-width: 540px; margin-bottom: 28px; }
+
+  /* ── Client bar ── */
+  .client-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 14px 18px; margin-bottom: 10px;
+    box-shadow: var(--sh); display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .client-label { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  .client-select-wrap { flex: 1; min-width: 160px; }
+  #clientSelect {
+    width: 100%; background: var(--surface2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 28px 6px 10px; font-size: 13.5px; font-weight: 600; font-family: inherit;
+    cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%235A6A85' stroke-width='1.5'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  #clientSelect:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+  .client-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  .btn { font-size: 12px; font-weight: 600; font-family: inherit; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: 1px solid transparent; white-space: nowrap; transition: background .12s, border-color .12s, color .12s; line-height: 1; }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-dk); border-color: var(--accent-dk); }
+  .btn-ghost { background: transparent; color: var(--muted); border-color: var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-danger { background: transparent; color: var(--danger); border-color: var(--border); }
+  .btn-danger:hover { background: var(--danger-lt); border-color: var(--danger); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── Status bar ── */
+  .status-bar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 10px 18px; margin-bottom: 14px;
+    box-shadow: var(--sh); display: none; align-items: center; gap: 12px;
+  }
+  .status-label { font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+  #statusSelect {
+    background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 6px; padding: 5px 28px 5px 10px; font-size: 13px; font-weight: 600;
+    font-family: inherit; cursor: pointer; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 16 16' fill='none' stroke='%235A6A85' stroke-width='1.5'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center;
+  }
+  #statusSelect:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+
+  /* ── Progress card ── */
+  .progress-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 16px 20px; margin-bottom: 20px; box-shadow: var(--sh);
+    display: flex; align-items: center; gap: 16px;
+  }
+  .progress-label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+  .progress-bar-wrap { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .35s ease; width: 0%; }
+  .progress-count { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+  .reset-btn { font-size: 11px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 4px; padding: 3px 8px; cursor: pointer; font-family: inherit; transition: color .12s, border-color .12s; white-space: nowrap; }
+  .reset-btn:hover { color: var(--text); border-color: var(--muted); }
+
+  /* ── Phase sections ── */
+  .phase { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); margin-bottom: 12px; box-shadow: var(--sh); overflow: hidden; }
+  .phase-header { display: flex; align-items: flex-start; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+  .phase-tag { font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; color: #fff; white-space: nowrap; flex-shrink: 0; margin-top: 2px; }
+  .phase-title-wrap { flex: 1; min-width: 0; }
+  .phase-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+  .phase-objective { font-size: 11px; color: var(--muted); margin-top: 2px; font-style: italic; line-height: 1.4; }
+  .phase-progress { font-size: 11px; font-variant-numeric: tabular-nums; color: var(--muted); flex-shrink: 0; margin-top: 3px; }
+  .phase-chevron { width: 15px; height: 15px; color: var(--muted); transition: transform .18s; flex-shrink: 0; margin-top: 3px; }
+  .phase.collapsed .phase-chevron { transform: rotate(-90deg); }
+  .phase.collapsed .phase-body { display: none; }
+  .phase-body { padding: 0; }
+
+  /* ── Items ── */
+  .item { border-bottom: 1px solid var(--border); transition: background .1s; }
+  .item:last-child { border-bottom: none; }
+  .item:hover { background: var(--surface2); }
+  .item.completed .item-label { text-decoration: line-through; color: var(--muted); }
+  .item.completed .item-hint { opacity: .6; }
+  .item.completed { opacity: .6; }
+  .item-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 18px; }
+  .item-check {
+    width: 15px; height: 15px; border: 1.5px solid var(--border); border-radius: 4px;
+    flex-shrink: 0; margin-top: 3px; cursor: pointer; appearance: none; -webkit-appearance: none;
+    background: var(--surface); position: relative; transition: background .12s, border-color .12s;
+  }
+  .item-check:checked { background: var(--good); border-color: var(--good); }
+  .item-check:checked::after { content: ''; position: absolute; left: 4px; top: 1.5px; width: 4px; height: 8px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg); }
+  .item-check:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .item-content { flex: 1; min-width: 0; cursor: pointer; }
+  .item-label { font-size: 13.5px; color: var(--text); line-height: 1.5; }
+  .item-hint { font-size: 11.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .sub-items { margin-top: 5px; padding-left: 2px; display: flex; flex-direction: column; gap: 2px; }
+  .sub-item { display: flex; align-items: flex-start; gap: 8px; font-size: 11.5px; color: var(--muted); }
+  .sub-item::before { content: '·'; font-size: 16px; line-height: 1.1; flex-shrink: 0; }
+
+  /* N/A button */
+  .na-btn { flex-shrink: 0; margin-top: 2px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; color: var(--border); transition: color .12s, background .12s, border-color .12s; padding: 0; }
+  .na-btn:hover { color: var(--muted); background: var(--bg); border-color: var(--border); }
+  .na-btn.active { color: var(--muted); border-color: var(--border); background: var(--surface2); }
+  .na-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .na-pill { font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 5px; flex-shrink: 0; margin-top: 3px; white-space: nowrap; display: none; }
+
+  .item.na { opacity: .45; }
+  .item.na:hover { background: transparent; }
+  .item.na .item-label { text-decoration: line-through; }
+  .item.na .item-content { cursor: default; pointer-events: none; }
+  .item.na .item-check { display: none; }
+  .item.na .na-pill { display: inline-flex; }
+
+  /* Note button */
+  .note-btn { flex-shrink: 0; margin-top: 2px; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid transparent; border-radius: 5px; cursor: pointer; color: var(--border); transition: color .12s, background .12s, border-color .12s; padding: 0; }
+  .note-btn:hover { color: var(--muted); background: var(--bg); border-color: var(--border); }
+  .note-btn.has-note { color: var(--accent); border-color: var(--accent); background: var(--accent-lt); }
+  .note-btn.open { color: var(--accent); border-color: var(--accent); background: var(--accent-lt); }
+  .note-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .note-wrap { padding: 0 18px 12px 45px; display: none; }
+  .note-wrap.open { display: block; }
+  .note-textarea { width: 100%; background: var(--note-bg); color: var(--text); border: 1px solid var(--note-border); border-radius: 6px; padding: 8px 12px; font-size: 12.5px; font-family: inherit; line-height: 1.6; resize: none; min-height: 60px; overflow: hidden; transition: border-color .12s; }
+  .note-textarea::placeholder { color: var(--muted); opacity: .7; }
+  .note-textarea:focus { outline: none; border-color: #D97706; }
+  .note-existing { font-size: 11.5px; color: #92700A; background: var(--note-bg); border: 1px solid var(--note-border); border-radius: 6px; padding: 6px 10px; line-height: 1.5; cursor: pointer; margin: 0 18px 10px 45px; display: none; }
+  :root[data-theme="dark"] .note-existing { color: #D4A84B; }
+  @media (prefers-color-scheme: dark) { .note-existing { color: #D4A84B; } }
+
+  .section-note { font-size: 12px; color: var(--muted); padding: 10px 18px; background: var(--accent-lt); border-top: 1px solid var(--border); line-height: 1.6; }
+  .section-note strong { color: var(--text); font-weight: 600; }
+
+  #mainContent { display: none; }
+  #emptyState { display: block; }
+
+  /* ── Modal ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; width: 100%; max-width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,.18); }
+  .modal-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .modal-msg { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+  .modal-input { width: 100%; background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; font-size: 14px; font-family: inherit; margin-bottom: 16px; }
+  .modal-input:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-error { font-size: 12px; color: var(--danger); margin-bottom: 10px; margin-top: -8px; display: none; }
+
+  @media (max-width: 500px) {
+    .client-bar { gap: 10px; }
+    .client-actions { width: 100%; justify-content: flex-end; }
+    .doc-title { font-size: 22px; }
+    .progress-card { flex-wrap: wrap; gap: 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .progress-bar-fill, .phase-chevron { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <nav class="release-nav">
+    <div class="release-nav-inner">
+      <a class="release-logo" href="index.html">
+        <img src="images/Laminar_pipeline_logo.png" alt="" class="release-logo-img">
+        <img src="images/Laminar_pipeline_wordmark.png" alt="Laminar Pipeline — Business Systems" class="release-wordmark-img">
+      </a>
+      <span class="release-build">Build 0.1.0</span>
+    </div>
+  </nav>
+
+<div class="wrap">
+
+  <a class="back-link" href="index.html">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12L6 8l4-4"/></svg>
+    Back to Tools
+  </a>
+
+  <div class="doc-eyebrow">Laminar Business Systems</div>
+  <h1 class="doc-title">Social Media Launch Pad</h1>
+  <p class="doc-desc">Complete playbook for establishing a professional, consistent social media presence across all relevant platforms — from account creation through launch. One checklist per client.</p>
+
+  <!-- Client bar -->
+  <div class="client-bar">
+    <span class="client-label">Client</span>
+    <div class="client-select-wrap">
+      <select id="clientSelect" onchange="switchClient(this.value)"></select>
+    </div>
+    <div class="client-actions">
+      <button class="btn btn-primary" onclick="newClient()">+ New Client</button>
+      <button class="btn btn-ghost" onclick="renameClient()">Rename</button>
+      <button class="btn btn-ghost" onclick="exportSnapshot()">Export Snapshot</button>
+      <button class="btn btn-danger" onclick="deleteClient()">Delete</button>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar" id="statusBar">
+    <span class="status-label">Status</span>
+    <select id="statusSelect" onchange="setStatus(this.value)">
+      <option value="discovery">🟢 Discovery</option>
+      <option value="in-progress">🟡 In Progress</option>
+      <option value="waiting-client">🔴 Blocked</option>
+      <option value="client-review">🔵 Client Review</option>
+      <option value="ready-launch">🟣 Ready for Launch</option>
+      <option value="live">✅ Live</option>
+    </select>
+  </div>
+
+  <!-- Empty state -->
+  <div id="emptyState" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:56px 24px;text-align:center;box-shadow:var(--sh);">
+    <div style="font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px;">No clients yet</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:24px;">Add your first client to start tracking their Social Media Launch Pad progress.</div>
+    <button class="btn btn-primary" style="padding:10px 20px;font-size:13px;" onclick="newClient()">+ Add First Client</button>
+  </div>
+
+  <!-- Main content -->
+  <div id="mainContent">
+    <div class="progress-card">
+      <span class="progress-label">Progress</span>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="totalBar"></div></div>
+      <span class="progress-count" id="totalCount">0 / 0</span>
+      <button class="reset-btn" onclick="resetCurrent()">Reset</button>
+    </div>
+    <div id="phasesContainer"></div>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="modalBgClick(event)">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-msg" id="modalMsg"></div>
+    <input class="modal-input" id="modalInput" type="text" autocomplete="off" onkeydown="modalKey(event)">
+    <div class="modal-error" id="modalError"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modalConfirm" onclick="modalSubmit()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const STATUSES = [
+  { value: 'discovery',      label: '🟢 Discovery' },
+  { value: 'in-progress',    label: '🟡 In Progress' },
+  { value: 'waiting-client', label: '🔴 Blocked' },
+  { value: 'client-review',  label: '🔵 Client Review' },
+  { value: 'ready-launch',   label: '🟣 Ready for Launch' },
+  { value: 'live',           label: '✅ Live' },
+];
+
+const SVG_NOTE_OUTLINE = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 2.5a1.5 1.5 0 0 1 2.121 2.121L5.5 13 2 14l1-3.5L11 2.5z"/></svg>';
+const SVG_NOTE_FILLED  = '<svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" stroke="none"><path d="M11 2.5a1.5 1.5 0 0 1 2.121 2.121L5.5 13 2 14l1-3.5L11 2.5z"/></svg>';
+const SVG_NA           = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="5.5"/><line x1="4.5" y1="11.5" x2="11.5" y2="4.5"/></svg>';
+
+// ── Data ─────────────────────────────────────────────────────────────────────
+
+const PHASES = [
+  {
+    id:'s1', tag:'Phase 1', color:'#1A5FDB',
+    title:'Discovery & Scope',
+    objective:'Define which platforms are right for this client, confirm what already exists, and gather everything needed before any accounts are created.',
+    items:[
+      { label:'Discovery call — platforms, audience, business goals, content comfort level', hint:'Identify where the client\'s target customers actually spend time. Not every business needs every platform.' },
+      { label:'Audit existing social presence', hint:'Search for any existing accounts — active, dormant, or unclaimed. Note follower counts, last activity, and whether to reclaim or start fresh.' },
+      { label:'Confirm platforms in scope for this engagement', hint:'Document the agreed platform list. Use N/A on this checklist for any platform not in scope — keeps the progress tracking clean.' },
+      { label:'Collect brand assets', hint:'Logo PNG (transparent background), brand colours (hex codes), any existing photography or product images, brand font if known.' },
+      { label:'Confirm brand voice and tone', hint:'Professional vs. casual, local vs. broad, educational vs. promotional. A few descriptive words go a long way — capture them in a note.' },
+      { label:'Client to provide contact and business information', hint:'Phone, email, website URL, physical address or service area, business hours, business category for each platform', clientAction:true },
+    ]
+  },
+  {
+    id:'s2', tag:'Phase 2', color:'#1877F2',
+    title:'Account Creation',
+    objective:'Create and claim every platform account in scope, using business credentials from the start — not personal accounts repurposed later.',
+    items:[
+      { label:'Create LinkedIn Company Page', hint:'Requires client\'s personal LinkedIn profile as the initial admin — confirm client has a personal LinkedIn account before starting. Use business email for notifications.' },
+      { label:'Create Facebook Business Page', hint:'Use the client\'s business email. Set up as a Page, not a personal profile. Category, description, and contact info added at creation.' },
+      { label:'Create Instagram Business Account', hint:'If client has an existing personal Instagram, convert it to a Business Account — do not create a duplicate. Link to Facebook Page during setup.' },
+      { label:'Create TikTok Business Account', hint:'Optional — mark N/A if not in scope. Use business email. TikTok Business accounts have access to analytics and the Business Creative Hub.' },
+      { label:'Create Nextdoor Business Profile', hint:'Optional — high value for local service businesses (trades, cleaning, landscaping, etc.). Create at business.nextdoor.com. Verify service area.' },
+      { label:'Claim or create Google Business Profile', hint:'If not already done in the Business Launch Pad engagement. Verify the business is not already listed before creating a new one.' },
+    ]
+  },
+  {
+    id:'s3', tag:'Phase 3', color:'#BE185D',
+    title:'Profile Setup & Branding',
+    objective:'Establish a consistent, professional brand presence across every active platform before any content is published.',
+    items:[
+      { label:'Upload profile image (logo) to all active platforms', hint:'Square format preferred. Minimum 400×400px. The logo mark (icon) works better than the full wordmark at small sizes.' },
+      { label:'Upload cover photos and banners to all platforms', hint:'Dimensions vary by platform — create correctly sized versions for each. LinkedIn: 1128×191px. Facebook: 820×312px. Twitter/X: 1500×500px.' },
+      { label:'Write and publish bio/about sections on all platforms', hint:'Each platform has different character limits and audience expectations. Adapt the core message, don\'t copy-paste the same text everywhere.' },
+      { label:'Add website URL to all profiles' },
+      { label:'Add contact information to all profiles', hint:'Phone, email, address or service area, hours. Consistency across platforms is important for local search signals.' },
+      { label:'Set correct business category on each platform', hint:'Category affects discoverability. Take time to choose the most specific category available — "Pressure Washing Service" beats "Home Services".' },
+      { label:'Add business hours where applicable', hint:'Facebook, Google Business Profile, LinkedIn all support hours. Keep them current — mismatched hours erode trust.' },
+      { label:'Client to review and approve all profiles before any content is published', hint:'Share screenshots or links to each profile. Collect written sign-off before moving to Phase 4.', clientAction:true },
+    ]
+  },
+  {
+    id:'s4', tag:'Phase 4', color:'#0866FF',
+    title:'Meta Business Suite Setup',
+    objective:'Connect Facebook and Instagram under one management layer so the client can handle messages, comments, and scheduling from a single place.',
+    sectionNote:'Meta Business Suite is free and required regardless of whether the client intends to run paid ads. It unifies the Facebook Page and Instagram inbox and is the foundation for any future advertising.',
+    items:[
+      { label:'Set up Meta Business Manager account', hint:'business.facebook.com — use the client\'s business email. This is separate from the personal Facebook account.' },
+      { label:'Connect Facebook Page to Business Manager' },
+      { label:'Connect Instagram Business Account to Business Manager', hint:'Settings → Accounts → Instagram Accounts → Add. Instagram must already be a Business Account (done in Phase 2).' },
+      { label:'Configure unified inbox (Messenger + Instagram DMs)', hint:'Meta Business Suite → Inbox → configure which accounts are included. Allows the client to manage all messages in one place.' },
+      { label:'Add client as admin with full Business Manager access', hint:'Settings → People → Add → assign Admin role. Confirm client can log in independently before leaving this phase.' },
+    ]
+  },
+  {
+    id:'s5', tag:'Phase 5', color:'#00A693',
+    title:'Metricool Setup',
+    objective:'Configure the social media scheduling and analytics platform so the client has a single dashboard to manage, schedule, and measure all platforms.',
+    sectionNote:'Metricool is the recommended scheduling tool for Laminar clients. It supports all key platforms including Google Business Profile — which most competitors do not. Free tier is functional for most small business needs.',
+    items:[
+      { label:'Create Metricool account', hint:'metricool.com — use business email. If managing multiple clients, use a Laminar agency account and add the client as a team member.' },
+      { label:'Connect Facebook Page and Instagram to Metricool' },
+      { label:'Connect LinkedIn Company Page to Metricool' },
+      { label:'Connect Google Business Profile to Metricool', hint:'A key differentiator of Metricool. Allows scheduling Google Business posts directly from the same dashboard.' },
+      { label:'Connect TikTok to Metricool', hint:'If TikTok is in scope. Metricool supports TikTok scheduling on paid plans — confirm plan tier covers it.' },
+      { label:'Add client as a Metricool team member', hint:'Team → Invite → set appropriate permissions. Client should be able to schedule and view analytics but not disconnect integrations.' },
+    ]
+  },
+  {
+    id:'s6', tag:'Phase 6', color:'#7C3AED',
+    title:'Content & Launch Preparation',
+    objective:'Load the first weeks of content and ensure the accounts launch with substance, not empty profiles.',
+    sectionNote:'The client is the authority on their own business and how they want to appear in social media. Laminar\'s role is to format, optimise, and schedule the content the client provides. Additional services — content development, photography, videography, and graphic design — are available by consultation and separate quote.',
+    items:[
+      { label:'Client to provide initial post content — minimum 8 posts', hint:'Written copy and any images/videos for each post. Remind the client: authentic content outperforms polished agency copy. Their words, their personality.', clientAction:true },
+      { label:'Optional: Assist client with content structure and messaging framework', hint:'If the client needs help, provide a simple brief template: hook, body, call to action. Do not write the content for them — guide the structure.' },
+      { label:'Optional: Production services consultation — photography, videography, or graphic design', hint:'If the client needs professional imagery, branded graphics, or video content, this is a separate engagement quoted by consultation. Confirm scope and timeline before content scheduling begins.' },
+      { label:'Optimise post copy for each platform', hint:'Adapt character counts, hashtag strategy, and tone per platform. What works on LinkedIn reads wrong on Facebook. Reformat, don\'t reuse.' },
+      { label:'Source or prepare images for each post', hint:'Confirm client has provided images, or create simple branded graphics if in scope. Every post should have a visual.' },
+      { label:'Schedule first 3–4 weeks of content in Metricool', hint:'Space posts appropriately — 3×/week is a reasonable starting cadence for most platforms. Avoid posting everything at once.' },
+      { label:'Define hashtag strategy for each platform', hint:'LinkedIn: 3–5 professional hashtags. Instagram: 10–15 targeted hashtags. Facebook: minimal. Document the agreed hashtag sets for the client to reuse.' },
+    ]
+  },
+  {
+    id:'s7', tag:'Phase 7', color:'#166534',
+    title:'Handoff & Training',
+    objective:'Transfer full ownership to the client with everything documented, access confirmed, and the tools understood.',
+    items:[
+      { label:'Document all account login credentials and URLs in client folder', hint:'Every platform URL, username, and recovery email. Store securely — this is what the client comes back to when they forget how to log in.' },
+      { label:'Confirm client has independent admin access to every platform', hint:'Have the client log in to each account themselves and confirm access before you consider handoff complete.', clientAction:true },
+      { label:'Complete Metricool walkthrough with client', hint:'Show them: how to schedule a post, how to read basic analytics, how to check the inbox. Keep it focused — 20 minutes max.' },
+      { label:'Deliver content calendar template', hint:'A simple recurring schedule showing recommended post frequency per platform. Makes ongoing social media feel manageable rather than overwhelming.' },
+      { label:'Deliver social media handoff summary', hint:'What was set up, which platforms are active, recommended posting cadence, what content to create next, and any items left pending (e.g. Google verification, TikTok approval).' },
+    ]
+  },
+];
+
+// ── Storage ──────────────────────────────────────────────────────────────────
+
+const KEY = 'lbs-social-v1';
+let STATE = { clients:{}, active:null, schemaVersion:1 };
+
+function load() { return STATE; }
+function save(data) { STATE = data; try { localStorage.setItem(KEY, JSON.stringify(data)); } catch(e) {} }
+function tryLoadFromStorage() { try { const r = localStorage.getItem(KEY); if (r) STATE = JSON.parse(r); } catch(e) {} }
+
+function initSchemaIfNeeded() {
+  const d = load();
+  if ((d.schemaVersion || 0) >= 1) return;
+  d.schemaVersion = 1;
+  save(d);
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function getNote(client, key) {
+  const n = (client.notes||{})[key];
+  if (!n) return '';
+  return typeof n === 'string' ? n : (n.internal || '');
+}
+function getStatusLabel(value) {
+  return (STATUSES.find(s => s.value === value) || STATUSES[1]).label;
+}
+
+// ── Rendering ────────────────────────────────────────────────────────────────
+
+function renderPhases() {
+  const container = document.getElementById('phasesContainer');
+  container.innerHTML = '';
+  const d = load();
+  const client  = d.active ? (d.clients[d.active] || { checks:{}, notes:{}, skipped:{}, status:'in-progress' }) : { checks:{}, notes:{}, skipped:{}, status:'in-progress' };
+  const skipped = client.skipped || {};
+
+  PHASES.forEach(phase => {
+    const phaseEl = document.createElement('div');
+    phaseEl.className = 'phase';
+    phaseEl.id = phase.id;
+
+    let itemsHTML = '';
+    phase.items.forEach((item, itemIdx) => {
+      const key     = `${phase.id}-${itemIdx}`;
+      const checked = !!client.checks[key];
+      const isNA    = !!skipped[key];
+      const note    = getNote(client, key);
+      const hasNote = note.length > 0;
+      const noteIcon = hasNote ? SVG_NOTE_FILLED : SVG_NOTE_OUTLINE;
+      const hintHTML = item.hint ? `<div class="item-hint">${escHtml(item.hint)}</div>` : '';
+      const subsHTML = item.subs ? `<div class="sub-items">${item.subs.map(s=>`<span class="sub-item">${escHtml(s)}</span>`).join('')}</div>` : '';
+
+      itemsHTML += `
+        <div class="item${checked?' completed':''}${isNA?' na':''}" id="item-${phase.id}-${itemIdx}">
+          <div class="item-row">
+            <input type="checkbox" class="item-check" id="check-${phase.id}-${itemIdx}" ${checked?'checked':''} ${isNA?'style="display:none"':''} onchange="toggleCheck('${phase.id}',${itemIdx},this.checked)">
+            <span class="na-pill" id="na-pill-${phase.id}-${itemIdx}" ${isNA?'':'style="display:none"'}>N/A</span>
+            <label for="check-${phase.id}-${itemIdx}" class="item-content">
+              <div class="item-label">${escHtml(item.label)}</div>
+              ${hintHTML}${subsHTML}
+            </label>
+            <button class="na-btn${isNA?' active':''}" id="na-btn-${phase.id}-${itemIdx}" onclick="toggleNA('${phase.id}',${itemIdx})" type="button" title="${isNA?'Mark as applicable':'Mark as not applicable'}">${SVG_NA}</button>
+            <button class="note-btn${hasNote?' has-note':''}" id="notebtn-${phase.id}-${itemIdx}" onclick="toggleNote('${phase.id}',${itemIdx})" type="button" title="${hasNote?'View/edit note':'Add note'}">${noteIcon}</button>
+          </div>
+          <div class="note-existing" id="note-preview-${phase.id}-${itemIdx}" onclick="toggleNote('${phase.id}',${itemIdx})" style="${hasNote?'display:block':'display:none'}">📝 ${hasNote?escHtml(note):''}</div>
+          <div class="note-wrap" id="note-wrap-${phase.id}-${itemIdx}">
+            <textarea class="note-textarea" id="note-ta-${phase.id}-${itemIdx}" placeholder="Add a note…" oninput="saveNote('${phase.id}',${itemIdx},this.value);autoResize(this)">${escHtml(note)}</textarea>
+          </div>
+        </div>`;
+    });
+
+    const objectiveHTML = phase.objective ? `<span class="phase-objective">${escHtml(phase.objective)}</span>` : '';
+    const sectionNoteHTML = phase.sectionNote ? `<div class="section-note"><strong>Note:</strong> ${escHtml(phase.sectionNote)}</div>` : '';
+
+    phaseEl.innerHTML = `
+      <div class="phase-header" onclick="togglePhase('${phase.id}')">
+        <span class="phase-tag" style="background:${phase.color}">${escHtml(phase.tag)}</span>
+        <div class="phase-title-wrap">
+          <span class="phase-title">${escHtml(phase.title)}</span>
+          ${objectiveHTML}
+        </div>
+        <span class="phase-progress" id="${phase.id}-prog">0/${phase.items.length}</span>
+        <svg class="phase-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6l4 4 4-4"/></svg>
+      </div>
+      <div class="phase-body">${itemsHTML}${sectionNoteHTML}</div>`;
+
+    container.appendChild(phaseEl);
+  });
+
+  updateProgress();
+  renderStatusBar();
+}
+
+// ── Interactions ──────────────────────────────────────────────────────────────
+
+function toggleCheck(phaseId, itemIdx, checked) {
+  const key = `${phaseId}-${itemIdx}`;
+  const d = load();
+  if (!d.active) return;
+  if ((d.clients[d.active]?.skipped||{})[key]) return;
+  if (!d.clients[d.active]) d.clients[d.active] = { checks:{}, notes:{}, skipped:{}, status:'in-progress' };
+  if (checked) { d.clients[d.active].checks[key] = true; }
+  else { delete d.clients[d.active].checks[key]; }
+  save(d);
+  document.getElementById(`item-${phaseId}-${itemIdx}`).classList.toggle('completed', checked);
+  updateProgress();
+}
+
+function toggleNA(phaseId, itemIdx) {
+  const key = `${phaseId}-${itemIdx}`;
+  const d = load();
+  if (!d.active) return;
+  const client = d.clients[d.active];
+  if (!client) return;
+  if (!client.skipped) client.skipped = {};
+  const wasNA = !!client.skipped[key];
+  if (wasNA) {
+    delete client.skipped[key];
+  } else {
+    client.skipped[key] = true;
+    delete client.checks[key];
+    document.getElementById(`check-${phaseId}-${itemIdx}`).checked = false;
+    document.getElementById(`item-${phaseId}-${itemIdx}`).classList.remove('completed');
+  }
+  save(d);
+  const itemEl  = document.getElementById(`item-${phaseId}-${itemIdx}`);
+  const checkEl = document.getElementById(`check-${phaseId}-${itemIdx}`);
+  const pillEl  = document.getElementById(`na-pill-${phaseId}-${itemIdx}`);
+  const naBtn   = document.getElementById(`na-btn-${phaseId}-${itemIdx}`);
+  if (wasNA) {
+    itemEl.classList.remove('na');
+    checkEl.style.display = '';
+    pillEl.style.display = 'none';
+    naBtn.classList.remove('active');
+    naBtn.title = 'Mark as not applicable';
+  } else {
+    itemEl.classList.add('na');
+    checkEl.style.display = 'none';
+    pillEl.style.display = 'inline-flex';
+    naBtn.classList.add('active');
+    naBtn.title = 'Mark as applicable';
+  }
+  updateProgress();
+}
+
+function toggleNote(phaseId, itemIdx) {
+  const wrap    = document.getElementById(`note-wrap-${phaseId}-${itemIdx}`);
+  const btn     = document.getElementById(`notebtn-${phaseId}-${itemIdx}`);
+  const preview = document.getElementById(`note-preview-${phaseId}-${itemIdx}`);
+  const ta      = document.getElementById(`note-ta-${phaseId}-${itemIdx}`);
+  const isOpen  = wrap.classList.contains('open');
+  if (isOpen) {
+    wrap.classList.remove('open');
+    btn.classList.remove('open');
+    const val = ta.value.trim();
+    if (val) {
+      preview.style.display = 'block';
+      preview.innerHTML = '📝 ' + escHtml(val);
+      btn.classList.add('has-note');
+      btn.innerHTML = SVG_NOTE_FILLED;
+    } else {
+      preview.style.display = 'none';
+      btn.classList.remove('has-note');
+      btn.innerHTML = SVG_NOTE_OUTLINE;
+    }
+  } else {
+    wrap.classList.add('open');
+    btn.classList.add('open');
+    btn.classList.remove('has-note');
+    preview.style.display = 'none';
+    ta.focus();
+    autoResize(ta);
+  }
+}
+
+function saveNote(phaseId, itemIdx, value) {
+  const key = `${phaseId}-${itemIdx}`;
+  const d = load();
+  if (!d.active) return;
+  if (!d.clients[d.active]) d.clients[d.active] = { checks:{}, notes:{}, skipped:{}, status:'in-progress' };
+  const existing = d.clients[d.active].notes[key] || { internal:'', client:'' };
+  if (value.trim()) {
+    existing.internal = value;
+    d.clients[d.active].notes[key] = existing;
+  } else {
+    if (existing.client) { existing.internal = ''; d.clients[d.active].notes[key] = existing; }
+    else { delete d.clients[d.active].notes[key]; }
+  }
+  save(d);
+}
+
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.max(60, el.scrollHeight) + 'px'; }
+function togglePhase(id) { document.getElementById(id).classList.toggle('collapsed'); }
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+
+function updateProgress() {
+  const d = load();
+  const client  = d.active ? (d.clients[d.active]||{}) : {};
+  const checks  = client.checks  || {};
+  const skipped = client.skipped || {};
+  let total = 0, done = 0;
+  PHASES.forEach(phase => {
+    let phaseDone = 0, phaseTotal = 0;
+    phase.items.forEach((_, idx) => {
+      const key = `${phase.id}-${idx}`;
+      if (skipped[key]) return;
+      total++; phaseTotal++;
+      if (checks[key]) { done++; phaseDone++; }
+    });
+    const el = document.getElementById(phase.id + '-prog');
+    if (el) el.textContent = `${phaseDone}/${phaseTotal}`;
+  });
+  const pct = total ? (done/total*100) : 0;
+  const bar = document.getElementById('totalBar');
+  const count = document.getElementById('totalCount');
+  if (bar) bar.style.width = pct + '%';
+  if (count) count.textContent = `${done} / ${total}`;
+}
+
+// ── Status ────────────────────────────────────────────────────────────────────
+
+function setStatus(value) {
+  const d = load();
+  if (!d.active || !d.clients[d.active]) return;
+  d.clients[d.active].status = value;
+  save(d);
+}
+function renderStatusBar() {
+  const d = load();
+  const client = d.active ? d.clients[d.active] : null;
+  const sel = document.getElementById('statusSelect');
+  if (sel) sel.value = client ? (client.status||'in-progress') : 'in-progress';
+}
+
+// ── Client management ─────────────────────────────────────────────────────────
+
+function refreshClientSelect() {
+  const d = load();
+  const sel = document.getElementById('clientSelect');
+  const names = Object.keys(d.clients).sort();
+  sel.innerHTML = names.map(n=>`<option value="${escHtml(n)}" ${n===d.active?'selected':''}>${escHtml(n)}</option>`).join('');
+}
+function showUI(hasClients) {
+  document.getElementById('emptyState').style.display = hasClients ? 'none' : 'block';
+  document.getElementById('mainContent').style.display = hasClients ? 'block' : 'none';
+  document.getElementById('statusBar').style.display = hasClients ? 'flex' : 'none';
+}
+function switchClient(name) {
+  const d = load(); d.active = name; save(d); renderPhases();
+}
+
+// ── Modal ────────────────────────────────────────────────────────────────────
+
+let _modalCallback = null, _modalMode = 'input';
+
+function openModal({ title, msg='', mode='input', placeholder='', confirmLabel='Confirm', confirmClass='btn-primary', callback }) {
+  _modalCallback = callback; _modalMode = mode;
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalMsg').textContent = msg;
+  document.getElementById('modalMsg').style.display = msg ? 'block' : 'none';
+  const inp = document.getElementById('modalInput');
+  inp.style.display = mode==='input' ? 'block' : 'none';
+  inp.value = ''; inp.placeholder = placeholder;
+  document.getElementById('modalError').style.display = 'none';
+  const btn = document.getElementById('modalConfirm');
+  btn.textContent = confirmLabel; btn.className = 'btn ' + confirmClass;
+  document.getElementById('modalOverlay').classList.add('open');
+  if (mode==='input') setTimeout(()=>inp.focus(),50); else btn.focus();
+}
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); _modalCallback = null; }
+function modalBgClick(e) { if (e.target===document.getElementById('modalOverlay')) closeModal(); }
+function modalKey(e) { if (e.key==='Enter') modalSubmit(); if (e.key==='Escape') closeModal(); }
+function modalSubmit() {
+  if (!_modalCallback) return;
+  const cb = _modalCallback;
+  if (_modalMode==='input') {
+    const val = document.getElementById('modalInput').value.trim();
+    if (!val) { const err=document.getElementById('modalError'); err.textContent='Please enter a name.'; err.style.display='block'; return; }
+    closeModal(); cb(val);
+  } else { closeModal(); cb(true); }
+}
+
+function newClient() {
+  openModal({ title:'New Client', placeholder:'Client name…', confirmLabel:'Add Client', callback:(name)=>{
+    const d = load();
+    if (d.clients[name]) { openModal({title:'Name taken',msg:`"${name}" already exists.`,mode:'confirm',confirmLabel:'OK',confirmClass:'btn-ghost',callback:()=>newClient()}); return; }
+    d.clients[name] = { checks:{}, notes:{}, skipped:{}, status:'in-progress' };
+    d.active = name; save(d); refreshClientSelect(); showUI(true); renderPhases();
+  }});
+}
+function renameClient() {
+  const d = load(); if (!d.active) return;
+  openModal({ title:'Rename Client', msg:`Current name: "${d.active}"`, placeholder:'New name…', confirmLabel:'Rename', callback:(name)=>{
+    const d2 = load(); if (name===d2.active) return;
+    if (d2.clients[name]) { openModal({title:'Name taken',msg:`"${name}" already exists.`,mode:'confirm',confirmLabel:'OK',confirmClass:'btn-ghost',callback:()=>{}}); return; }
+    d2.clients[name] = d2.clients[d2.active]; delete d2.clients[d2.active]; d2.active = name;
+    save(d2); refreshClientSelect(); renderPhases();
+  }});
+}
+function deleteClient() {
+  const d = load(); if (!d.active) return;
+  openModal({ title:'Delete Client', msg:`Delete "${d.active}" and all their progress? This cannot be undone.`, mode:'confirm', confirmLabel:'Delete', confirmClass:'btn-danger', callback:()=>{
+    const d2 = load(); delete d2.clients[d2.active];
+    const rem = Object.keys(d2.clients); d2.active = rem.length ? rem[0] : null;
+    save(d2); refreshClientSelect();
+    if (d2.active) { showUI(true); renderPhases(); } else showUI(false);
+  }});
+}
+function resetCurrent() {
+  const d = load(); if (!d.active) return;
+  openModal({ title:'Reset Progress', msg:`Reset all checkboxes for "${d.active}"? Notes and N/A settings will be kept.`, mode:'confirm', confirmLabel:'Reset', confirmClass:'btn-danger', callback:()=>{
+    const d2 = load(); d2.clients[d2.active].checks = {}; save(d2); renderPhases();
+  }});
+}
+
+// ── Export Snapshot ───────────────────────────────────────────────────────────
+
+function exportSnapshot() {
+  const d = load();
+  if (!d.active) return;
+  const clientName = d.active;
+  const client = d.clients[clientName] || { checks:{}, notes:{}, skipped:{}, status:'in-progress' };
+  const skipped = client.skipped || {};
+
+  const now = new Date();
+  const dateStr = now.toISOString().slice(0,10);
+  const dateDisplay = now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const slug = clientName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+  const filename = `${slug}-social-media-${dateStr}.html`;
+  const statusLabel = getStatusLabel(client.status||'in-progress');
+
+  let totalItems = 0, totalDone = 0;
+  PHASES.forEach(phase => phase.items.forEach((_,idx) => {
+    const key = `${phase.id}-${idx}`;
+    if (skipped[key]) return;
+    totalItems++;
+    if (client.checks[key]) totalDone++;
+  }));
+
+  let currentPhase = PHASES[PHASES.length-1];
+  for (const phase of PHASES) {
+    if (phase.items.some((_,idx) => !skipped[`${phase.id}-${idx}`] && !client.checks[`${phase.id}-${idx}`])) {
+      currentPhase = phase; break;
+    }
+  }
+
+  const pendingClientActions = [];
+  PHASES.forEach(phase => phase.items.forEach((item,idx) => {
+    const key = `${phase.id}-${idx}`;
+    if (item.clientAction && !skipped[key] && !client.checks[key]) pendingClientActions.push({item,phase});
+  }));
+
+  const phasesHTML = PHASES.map(phase => {
+    let phaseDone = 0, phaseTotal = 0;
+    const itemsHTML = phase.items.map((item,itemIdx) => {
+      const key = `${phase.id}-${itemIdx}`;
+      const isNA = !!skipped[key];
+      const checked = !isNA && !!client.checks[key];
+      const note = getNote(client, key);
+      if (!isNA) { phaseTotal++; if (checked) phaseDone++; }
+      const noteHTML = note ? `<div class="item-note">📝 ${escHtml(note)}</div>` : '';
+      const hintHTML = !isNA && item.hint ? `<div class="item-hint">${escHtml(item.hint)}</div>` : '';
+      const clientBadge = !isNA && item.clientAction ? `<span class="client-badge">Client Action</span>` : '';
+      const naBadge = isNA ? `<span class="na-badge">Not Applicable</span>` : '';
+      if (isNA) return `<div class="item na"><div class="item-chk" style="color:#5A6A85;border-color:#DCE3EE;background:#F8FAFC;font-size:13px">—</div><div class="item-body"><div class="item-label">${escHtml(item.label)} ${naBadge}</div>${noteHTML}</div></div>`;
+      return `<div class="item ${checked?'done':'pending'}"><div class="item-chk">${checked?'✓':''}</div><div class="item-body"><div class="item-label">${escHtml(item.label)} ${clientBadge}</div>${hintHTML}${noteHTML}</div></div>`;
+    }).join('');
+    const objHTML = phase.objective ? `<div class="phase-objective">${escHtml(phase.objective)}</div>` : '';
+    const secNoteHTML = phase.sectionNote ? `<div class="section-note"><strong>Note:</strong> ${escHtml(phase.sectionNote)}</div>` : '';
+    return `<div class="phase"><div class="phase-hdr"><span class="phase-tag" style="background:${phase.color}">${escHtml(phase.tag)}</span><div class="phase-title-wrap"><div class="phase-title">${escHtml(phase.title)}</div>${objHTML}</div><span class="phase-prog">${phaseDone}/${phaseTotal}</span></div><div class="phase-body">${itemsHTML}${secNoteHTML}</div></div>`;
+  }).join('');
+
+  const clientActionsHTML = pendingClientActions.length ? `<div class="actions-card"><div class="actions-title">Outstanding Client Actions</div>${pendingClientActions.map(({item,phase})=>`<div class="action-row"><div class="action-chk">☐</div><div><div class="action-label">${escHtml(item.label)}</div><div class="action-phase">${escHtml(phase.tag)} — ${escHtml(phase.title)}</div></div></div>`).join('')}</div>` : '';
+
+  const pct = totalItems ? Math.round(totalDone/totalItems*100) : 0;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escHtml(clientName)} — Social Media Snapshot</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:#F2F5F9;color:#0D1626;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.6;padding:40px 20px 60px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto}
+  .eyebrow{font-size:10.5px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#1A5FDB;margin-bottom:8px}
+  .report-title{font-size:26px;font-weight:700;letter-spacing:-.02em;color:#0D1626;margin-bottom:4px}
+  .report-client{font-size:18px;font-weight:600;color:#1A5FDB;margin-bottom:8px}
+  .status-badge{display:inline-block;font-size:13px;font-weight:600;color:#0D1626;background:#EBF1FD;border:1px solid #C7D9F8;border-radius:6px;padding:3px 12px;margin-bottom:6px}
+  .report-meta{font-size:12px;color:#5A6A85;margin-bottom:24px}
+  .summary-card{background:#fff;border:1px solid #DCE3EE;border-radius:8px;padding:18px 20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(13,22,38,.07);display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .summary-full{grid-column:1/-1}
+  .s-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#5A6A85;margin-bottom:4px}
+  .s-value{font-size:15px;font-weight:700;color:#0D1626}
+  .s-sub{font-size:12px;color:#5A6A85}
+  .progress-bar-wrap{height:5px;background:#DCE3EE;border-radius:3px;overflow:hidden;margin-top:8px}
+  .progress-bar-fill{height:100%;background:#1A5FDB;border-radius:3px}
+  .actions-card{background:#FFFBEB;border:1px solid #FCD34D;border-radius:8px;padding:14px 18px;margin-bottom:16px}
+  .actions-title{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#92700A;margin-bottom:10px}
+  .action-row{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+  .action-row:last-child{margin-bottom:0}
+  .action-chk{font-size:14px;color:#92700A;flex-shrink:0}
+  .action-label{font-size:13px;font-weight:600;color:#0D1626}
+  .action-phase{font-size:11px;color:#92700A}
+  .phase{background:#fff;border:1px solid #DCE3EE;border-radius:8px;margin-bottom:12px;overflow:hidden;box-shadow:0 1px 3px rgba(13,22,38,.07)}
+  .phase-hdr{display:flex;align-items:flex-start;gap:12px;padding:12px 18px;border-bottom:1px solid #DCE3EE;background:#F8FAFC}
+  .phase-tag{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:3px 7px;border-radius:4px;color:#fff;white-space:nowrap;flex-shrink:0;margin-top:2px}
+  .phase-title-wrap{flex:1;min-width:0}
+  .phase-title{font-size:13.5px;font-weight:600;color:#0D1626}
+  .phase-objective{font-size:11px;color:#5A6A85;margin-top:2px;font-style:italic;line-height:1.4}
+  .phase-prog{font-size:11px;color:#5A6A85;white-space:nowrap;margin-top:3px}
+  .item{display:flex;align-items:flex-start;gap:12px;padding:10px 18px;border-bottom:1px solid #DCE3EE}
+  .item:last-child{border-bottom:none}
+  .item.done{opacity:.6}
+  .item.na{opacity:.5}
+  .item.na .item-label{color:#5A6A85}
+  .item-chk{width:16px;height:16px;flex-shrink:0;margin-top:2px;border:1.5px solid #DCE3EE;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;background:#fff}
+  .item.done .item-chk{background:#16A34A;border-color:#16A34A}
+  .item-body{flex:1;min-width:0}
+  .item-label{font-size:13.5px;color:#0D1626;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .item.done .item-label{text-decoration:line-through;color:#5A6A85}
+  .item-hint{font-size:11.5px;color:#5A6A85;margin-top:2px;line-height:1.5}
+  .item-note{font-size:12px;color:#92700A;background:#FFFBEB;border:1px solid #FCD34D;border-radius:5px;padding:5px 10px;margin-top:7px;line-height:1.5}
+  .client-badge{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#EBF1FD;color:#1A5FDB;border:1px solid #C7D9F8;border-radius:4px;padding:1px 5px;white-space:nowrap;flex-shrink:0}
+  .na-badge{font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:#F1F5F9;color:#5A6A85;border:1px solid #DCE3EE;border-radius:4px;padding:1px 5px;white-space:nowrap;flex-shrink:0}
+  .section-note{font-size:12px;color:#5A6A85;padding:10px 18px;background:#EBF1FD;border-top:1px solid #DCE3EE;line-height:1.6}
+  .section-note strong{color:#0D1626;font-weight:600}
+  .report-footer{text-align:center;margin-top:36px;font-size:11px;color:#5A6A85;border-top:1px solid #DCE3EE;padding-top:16px}
+  @media print{body{background:#fff;padding:20px}.phase,.summary-card,.actions-card{break-inside:avoid;box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Laminar Business Systems — Social Media Launch Pad</div>
+  <div class="report-title">Social Media Snapshot</div>
+  <div class="report-client">${escHtml(clientName)}</div>
+  <div class="status-badge">${escHtml(statusLabel)}</div>
+  <div class="report-meta">Exported ${escHtml(dateDisplay)}</div>
+  <div class="summary-card">
+    <div class="summary-full">
+      <div class="s-label">Overall Progress</div>
+      <div class="s-value">${totalDone} of ${totalItems} tasks complete (${pct}%)</div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+    </div>
+    <div><div class="s-label">Current Phase</div><div class="s-value" style="font-size:13px">${escHtml(currentPhase.tag)}</div><div class="s-sub">${escHtml(currentPhase.title)}</div></div>
+    <div><div class="s-label">Completed Tasks</div><div class="s-value">${totalDone}</div><div class="s-sub">of ${totalItems} in scope</div></div>
+  </div>
+  ${clientActionsHTML}
+  ${phasesHTML}
+  <div class="report-footer">Generated by Laminar Pipeline &middot; ${escHtml(dateDisplay)}</div>
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html],{type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+(function init() {
+  tryLoadFromStorage();
+  initSchemaIfNeeded();
+  const d = load();
+  const names = Object.keys(d.clients);
+  refreshClientSelect();
+  if (names.length > 0) {
+    if (!d.active || !d.clients[d.active]) { d.active = names[0]; save(d); refreshClientSelect(); }
+    showUI(true);
+    renderPhases();
+  } else {
+    showUI(false);
+  }
+})();
+</script>
+</body>
+</html>
