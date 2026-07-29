@@ -1,10 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/+esm';
-
-const supabase = createClient(
-  'https://nhiqblznignfyxycdmsd.supabase.co',
-  'sb_publishable_avD7yip20sKJDCwsU0IRAw_3TA-J5hS',
-  { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } },
-);
+import { supabase } from './supabase-client.js';
 
 const gate = document.querySelector('#authGate');
 const form = document.querySelector('#authForm');

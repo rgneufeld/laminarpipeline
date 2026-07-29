@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Projects — Laminar Pipeline</title>
+<link rel="icon" type="image/png" href="images/Laminar_pipeline_logo.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<button class="app-menu-toggle" id="appMenuToggle" aria-label="Open navigation" aria-expanded="false">☰</button>
+<div class="app-menu-scrim" id="appMenuScrim"></div>
+<aside class="app-menu" id="appMenu" aria-label="Application navigation">
+  <button class="app-menu-close" id="appMenuClose" aria-label="Close navigation">×</button>
+  <nav class="app-menu-links">
+    <a href="index.html">Dashboard</a>
+    <a href="index.html#playbooks">Playbooks</a>
+    <a href="projects.html" aria-current="page">Projects</a>
+  </nav>
+  <div class="app-menu-bottom">
+    <a href="#settings">Settings</a>
+    <span class="app-menu-user" id="appMenuUser">Checking session…</span>
+    <button class="app-menu-signout" id="appMenuSignout" type="button" hidden>Sign out</button>
+  </div>
+</aside>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="nav-logo" href="index.html">
+      <img src="images/Laminar_pipeline_logo.png" alt="" class="nav-logo-img">
+      <img src="images/Laminar_pipeline_wordmark.png" alt="Laminar Pipeline — Business Systems" class="nav-wordmark-img">
+    </a>
+    <span class="nav-build" aria-label="Commercial release build 0.1.0">Build 0.1.0</span>
+  </div>
+</nav>
+
+<main class="wrap-wide projects-workspace">
+  <div class="eyebrow">Laminar Framework</div>
+  <h1 class="page-title projects-title">Projects</h1>
+  <p class="page-desc projects-intro">Projects shown here are loaded from your Laminar Pipeline workspace.</p>
+
+  <section class="project-workspace-panel" aria-labelledby="projectListTitle">
+    <div class="workspace-heading">
+      <div>
+        <div class="section-label" id="projectListTitle">Accessible projects</div>
+        <p class="workspace-status" id="workspaceStatus" role="status" aria-live="polite">Loading projects…</p>
+      </div>
+      <button class="btn btn-primary" id="showCreateProject" type="button" hidden>+ New project</button>
+    </div>
+    <div class="project-workspace-list" id="projectList"></div>
+  </section>
+
+  <section class="project-create-panel" id="projectCreatePanel" hidden aria-labelledby="createProjectTitle">
+    <div class="section-label" id="createProjectTitle">Create project</div>
+    <p class="page-desc">A new project pins the selected published playbook version. Later template changes will not alter this project.</p>
+    <form class="project-create-form" id="projectCreateForm">
+      <label for="projectName">Project name</label>
+      <input id="projectName" name="name" type="text" autocomplete="organization" required>
+      <label for="clientName">Client name <span>(optional)</span></label>
+      <input id="clientName" name="clientName" type="text" autocomplete="organization">
+      <label for="playbookVersion">Playbook</label>
+      <select id="playbookVersion" name="playbookVersion" required></select>
+      <div class="project-create-actions">
+        <button class="btn btn-ghost" id="cancelCreateProject" type="button">Cancel</button>
+        <button class="btn btn-primary" id="createProjectSubmit" type="submit">Create project</button>
+      </div>
+      <p class="project-form-message" id="projectFormMessage" role="status" aria-live="polite"></p>
+    </form>
+  </section>
+</main>
+
+<section class="auth-gate" id="authGate" aria-labelledby="authGateTitle" hidden>
+  <div class="auth-gate-card">
+    <div class="eyebrow">Laminar Pipeline</div>
+    <h1 class="page-title" id="authGateTitle">Sign in to your workspace</h1>
+    <p class="page-desc">Use your Laminar Pipeline email and password to access the projects assigned to you.</p>
+    <form class="auth-form" id="authForm">
+      <label for="authEmail">Email</label>
+      <input id="authEmail" name="email" type="email" autocomplete="email" required>
+      <label for="authPassword">Password</label>
+      <input id="authPassword" name="password" type="password" autocomplete="current-password" required>
+      <button class="btn btn-primary auth-submit" id="authSubmit" type="submit">Sign in</button>
+      <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section>
+
+<script>
+const appMenu = document.getElementById('appMenu');
+const appMenuToggle = document.getElementById('appMenuToggle');
+const appMenuScrim = document.getElementById('appMenuScrim');
+const setAppMenu = open => { appMenu.classList.toggle('open', open); appMenuScrim.classList.toggle('open', open); appMenuToggle.setAttribute('aria-expanded', String(open)); };
+appMenuToggle.onclick = () => setAppMenu(!appMenu.classList.contains('open'));
+document.getElementById('appMenuClose').onclick = () => setAppMenu(false);
+appMenuScrim.onclick = () => setAppMenu(false);
+</script>
+<script type="module" src="js/dashboard-auth.js"></script>
+<script type="module" src="js/projects.js"></script>
+</body>
+</html>
