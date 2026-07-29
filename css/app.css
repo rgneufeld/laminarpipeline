@@ -51,6 +51,10 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased;
 }
+.app-menu-toggle { position:fixed; top:16px; left:16px; z-index:30; width:36px; height:36px; padding:0; border-radius:7px; background:var(--surface); color:var(--text); border:1px solid var(--border); font-size:18px; line-height:1; cursor:pointer; }
+.app-menu { position:fixed; inset:0 auto 0 0; z-index:40; width:220px; padding:16px; background:#111827; border-right:1px solid var(--border); display:flex; flex-direction:column; transform:translateX(-100%); transition:transform .18s ease; }
+.app-menu.open { transform:translateX(0); }.app-menu-close { width:36px; height:36px; padding:0; background:transparent; color:var(--text); border:1px solid var(--border); border-radius:7px; font-size:22px; cursor:pointer; }
+.app-menu-links { display:grid; gap:8px; margin-top:28px; }.app-menu a { color:#b8c8e5; text-decoration:none; padding:9px 10px; border-radius:6px; font-size:13px; font-weight:600; }.app-menu a:hover { background:#1a2a47; color:#fff; }.app-menu-bottom { margin-top:auto; display:grid; gap:6px; }.app-menu-user { color:var(--muted); font-size:11px; padding:8px 10px; }.app-menu-scrim { position:fixed; inset:0; z-index:35; background:rgba(0,0,0,.42); opacity:0; visibility:hidden; transition:opacity .18s; }.app-menu-scrim.open { opacity:1; visibility:visible; }
 
 /* ── Layout ─────────────────────────────────────────────────────────────────── */
 .wrap      { max-width: 760px; margin: 0 auto; padding: 36px 20px 80px; }

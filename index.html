@@ -9,6 +9,21 @@
 </head>
 <body>
 
+<button class="app-menu-toggle" id="appMenuToggle" aria-label="Open navigation" aria-expanded="false">☰</button>
+<div class="app-menu-scrim" id="appMenuScrim"></div>
+<aside class="app-menu" id="appMenu" aria-label="Application navigation">
+  <button class="app-menu-close" id="appMenuClose" aria-label="Close navigation">×</button>
+  <nav class="app-menu-links">
+    <a href="index.html">Dashboard</a>
+    <a href="#playbooks">Playbooks</a>
+    <a href="#projects">Projects</a>
+  </nav>
+  <div class="app-menu-bottom">
+    <a href="#settings">Settings</a>
+    <span class="app-menu-user">Sign in to access your workspace</span>
+  </div>
+</aside>
+
 <nav class="nav">
   <div class="nav-inner">
     <a class="nav-logo" href="index.html">
@@ -119,6 +134,14 @@
 </main>
 
 <script>
+const appMenu = document.getElementById('appMenu');
+const appMenuToggle = document.getElementById('appMenuToggle');
+const appMenuScrim = document.getElementById('appMenuScrim');
+const setAppMenu = open => { appMenu.classList.toggle('open', open); appMenuScrim.classList.toggle('open', open); appMenuToggle.setAttribute('aria-expanded', String(open)); };
+appMenuToggle.onclick = () => setAppMenu(!appMenu.classList.contains('open'));
+document.getElementById('appMenuClose').onclick = () => setAppMenu(false);
+appMenuScrim.onclick = () => setAppMenu(false);
+
 const DATA_KEY = 'lbs-framework-v1';
 
 document.getElementById('btnBackup').onclick = async () => {
