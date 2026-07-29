@@ -20,7 +20,8 @@
   </nav>
   <div class="app-menu-bottom">
     <a href="#settings">Settings</a>
-    <span class="app-menu-user">Sign in to access your workspace</span>
+    <span class="app-menu-user" id="appMenuUser">Checking session…</span>
+    <button class="app-menu-signout" id="appMenuSignout" type="button" hidden>Sign out</button>
   </div>
 </aside>
 
@@ -133,6 +134,22 @@
 
 </main>
 
+<section class="auth-gate" id="authGate" aria-labelledby="authGateTitle" hidden>
+  <div class="auth-gate-card">
+    <div class="eyebrow">Laminar Pipeline</div>
+    <h1 class="page-title" id="authGateTitle">Sign in to your workspace</h1>
+    <p class="page-desc">Use your Laminar Pipeline email and password to access the projects assigned to you.</p>
+    <form class="auth-form" id="authForm">
+      <label for="authEmail">Email</label>
+      <input id="authEmail" name="email" type="email" autocomplete="email" required>
+      <label for="authPassword">Password</label>
+      <input id="authPassword" name="password" type="password" autocomplete="current-password" required>
+      <button class="btn btn-primary auth-submit" id="authSubmit" type="submit">Sign in</button>
+      <p class="auth-message" id="authMessage" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section>
+
 <script>
 const appMenu = document.getElementById('appMenu');
 const appMenuToggle = document.getElementById('appMenuToggle');
@@ -207,5 +224,6 @@ document.getElementById('restoreFile').onchange = e => {
   reader.readAsText(file);
 };
 </script>
+<script type="module" src="js/dashboard-auth.js"></script>
 </body>
 </html>
