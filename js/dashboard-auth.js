@@ -48,7 +48,7 @@ form.addEventListener('submit', async (event) => {
 
   submit.disabled = true;
   submit.textContent = 'Signing in…';
-  setMessage();
+  setMessage('Signing in…');
   const { error } = await supabase.auth.signInWithPassword({
     email: emailInput.value.trim(),
     password: passwordInput.value,
