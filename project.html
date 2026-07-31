@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project — Laminar Pipeline</title>
+<link rel="icon" type="image/png" href="images/Laminar_pipeline_logo.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<button class="app-menu-toggle" id="appMenuToggle" aria-label="Open navigation" aria-expanded="false">☰</button>
+<div class="app-menu-scrim" id="appMenuScrim"></div>
+<aside class="app-menu" id="appMenu" aria-label="Application navigation">
+  <button class="app-menu-close" id="appMenuClose" aria-label="Close navigation">×</button>
+  <nav class="app-menu-links"><a href="index.html">Dashboard</a><a href="index.html#playbooks">Playbooks</a><a href="projects.html">Projects</a></nav>
+  <div class="app-menu-bottom"><a href="#settings">Settings</a><span class="app-menu-user" id="appMenuUser">Checking session…</span><button class="app-menu-signout" id="appMenuSignout" type="button" hidden>Sign out</button></div>
+</aside>
+<nav class="nav"><div class="nav-inner"><a class="nav-logo" href="index.html"><img src="images/Laminar_pipeline_logo.png" alt="" class="nav-logo-img"><img src="images/Laminar_pipeline_wordmark.png" alt="Laminar Pipeline — Business Systems" class="nav-wordmark-img"></a><span class="nav-build">Build 0.1.0</span></div></nav>
+
+<main class="wrap project-workspace">
+  <a class="back-link" href="projects.html">‹ Projects</a>
+  <div class="eyebrow" id="projectPlaybook">Laminar project</div>
+  <h1 class="page-title" id="projectName">Loading project…</h1>
+  <p class="page-desc" id="projectClient"></p>
+  <section class="summary-card project-summary" id="projectSummary" hidden>
+    <div class="summary-top"><span class="bar-label">Progress</span><div class="progress-bar-wrap"><div class="progress-bar-fill" id="projectProgressBar"></div></div><span class="progress-count" id="projectProgressCount"></span></div>
+  </section>
+  <p class="project-workspace-status" id="projectWorkspaceStatus" role="status" aria-live="polite">Loading project…</p>
+  <div id="projectPhases"></div>
+</main>
+
+<section class="auth-gate" id="authGate" aria-labelledby="authGateTitle" hidden><div class="auth-gate-card"><div class="eyebrow">Laminar Pipeline</div><h1 class="page-title" id="authGateTitle">Sign in to your workspace</h1><p class="page-desc">Use your Laminar Pipeline email and password to access the projects assigned to you.</p><form class="auth-form" id="authForm"><label for="authEmail">Email</label><input id="authEmail" name="email" type="email" autocomplete="email" required><label for="authPassword">Password</label><input id="authPassword" name="password" type="password" autocomplete="current-password" required><button class="btn btn-primary auth-submit" id="authSubmit" type="submit">Sign in</button><p class="auth-message" id="authMessage" role="status" aria-live="polite"></p></form></div></section>
+
+<script>
+const appMenu=document.getElementById('appMenu');const appMenuToggle=document.getElementById('appMenuToggle');const appMenuScrim=document.getElementById('appMenuScrim');const setAppMenu=open=>{appMenu.classList.toggle('open',open);appMenuScrim.classList.toggle('open',open);appMenuToggle.setAttribute('aria-expanded',String(open));};appMenuToggle.onclick=()=>setAppMenu(!appMenu.classList.contains('open'));document.getElementById('appMenuClose').onclick=()=>setAppMenu(false);appMenuScrim.onclick=()=>setAppMenu(false);
+</script>
+<script type="module" src="js/dashboard-auth.js"></script>
+<script type="module" src="js/project-workspace.js"></script>
+</body>
+</html>

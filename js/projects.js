@@ -37,8 +37,9 @@ function renderProjects(projects, taskCounts) {
   }
 
   for (const project of projects) {
-    const card = document.createElement('article');
+    const card = document.createElement('a');
     card.className = 'project-workspace-card';
+    card.href = `project.html?id=${encodeURIComponent(project.id)}`;
     const taskCount = taskCounts.get(project.id) || 0;
     card.innerHTML = `
       <div class="project-workspace-type">${escapeHtml(projectPlaybook(project))}</div>
