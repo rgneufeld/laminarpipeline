@@ -11,10 +11,13 @@ const formMessage = document.querySelector('#projectFormMessage');
 const versionSelect = document.querySelector('#playbookVersion');
 const projectName = document.querySelector('#projectName');
 const clientName = document.querySelector('#clientName');
+const pageTitle = document.querySelector('#projectsTitle');
+const pageIntro = document.querySelector('#projectsIntro');
 
 let organisationId = null;
 let canCreateProjects = false;
 const shouldMaterializeLegacy = new URLSearchParams(location.search).get('materialize') === '1';
+const requestedPlaybook = new URLSearchParams(location.search).get('playbook');
 let materializationStarted = false;
 
 function setWorkspaceStatus(value) {
@@ -29,6 +32,12 @@ function projectPlaybook(row) {
   const version = Array.isArray(row.playbook_versions) ? row.playbook_versions[0] : row.playbook_versions;
   const playbook = version && (Array.isArray(version.playbooks) ? version.playbooks[0] : version.playbooks);
   return playbook?.name || 'Laminar playbook';
+}
+
+function projectPlaybookCode(row) {
+  const version = Array.isArray(row.playbook_versions) ? row.playbook_versions[0] : row.playbook_versions;
+  const playbook = version && (Array.isArray(version.playbooks) ? version.playbooks[0] : version.playbooks);
+  return playbook?.code || '';
 }
 
 function renderProjects(projects, taskCounts) {
@@ -113,13 +122,22 @@ async function loadWorkspace() {
     versionSelect.append(option);
   }
 
-  const projects = projectResult.data || [];
+  const allProjects = projectResult.data || [];
+  const projects = requestedPlaybook
+    ? allProjects.filter(project => projectPlaybookCode(project) === requestedPlaybook)
+    : allProjects;
+  if (requestedPlaybook) {
+    const matchingPlaybook = allProjects.find(project => projectPlaybookCode(project) === requestedPlaybook);
+    const playbookName = matchingPlaybook ? projectPlaybook(matchingPlaybook) : 'Selected playbook';
+    pageTitle.textContent = playbookName;
+    pageIntro.textContent = `Projects using ${playbookName} are loaded from your Laminar Pipeline workspace.`;
+  }
   const taskCounts = new Map();
-  if (projects.length) {
+  if (allProjects.length) {
     const { data: tasks, error: taskError } = await supabase
       .from('project_tasks')
       .select('project_id')
-      .in('project_id', projects.map(project => project.id));
+      .in('project_id', allProjects.map(project => project.id));
     if (taskError) {
       setWorkspaceStatus(taskError.message);
       return;
@@ -128,7 +146,9 @@ async function loadWorkspace() {
   }
 
   renderProjects(projects, taskCounts);
-  setWorkspaceStatus(`${projects.length} project${projects.length === 1 ? '' : 's'} accessible to you.`);
+  setWorkspaceStatus(requestedPlaybook
+    ? `${projects.length} project${projects.length === 1 ? '' : 's'} use this playbook.`
+    : `${projects.length} project${projects.length === 1 ? '' : 's'} accessible to you.`);
   if (shouldMaterializeLegacy && !materializationStarted) {
     materializationStarted = true;
     await materializeLegacyProjects(projects);
@@ -144,12 +164,21 @@ async function materializeLegacyProjects(projects) {
   setWorkspaceStatus(`Materializing preserved Laminar data for ${projects.length} project${projects.length === 1 ? '' : 's'}…`);
   const outcomes = await Promise.all(projects.map(async project => {
     const { data, error } = await supabase.functions.invoke('materialize-legacy-project', { body: { projectId: project.id } });
-    return { project, data, error };
+    let detail = error?.message || '';
+    if (error?.context instanceof Response) {
+      try {
+        const body = await error.context.clone().json();
+        detail = body?.error || detail;
+      } catch {
+        // Keep the transport error when the response body is not JSON.
+      }
+    }
+    return { project, data, error, detail };
   }));
   const completed = outcomes.filter(outcome => !outcome.error).length;
   const failures = outcomes.filter(outcome => outcome.error);
   if (failures.length) {
-    setWorkspaceStatus(`${completed} project${completed === 1 ? '' : 's'} materialized. ${failures.length} project${failures.length === 1 ? '' : 's'} could not be materialized: ${failures[0].error.message}`);
+    setWorkspaceStatus(`${completed} project${completed === 1 ? '' : 's'} materialized. ${failures.length} project${failures.length === 1 ? '' : 's'} could not be materialized: ${failures[0].detail || 'unknown error'}`);
     return;
   }
   setWorkspaceStatus(`Materialized preserved assets, deliverables, training, and operating-cycle data for ${completed} project${completed === 1 ? '' : 's'}.`);
