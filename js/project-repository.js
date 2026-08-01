@@ -52,7 +52,7 @@ export async function loadProjectSections(projectId) {
   const [qualificationResult, qualificationArtifactsResult, artifactsResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult] = await Promise.all([
     supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at,internal_note').eq('project_id', projectId),
     supabase.from('qualification_item_artifacts').select('qualification_item_id,artifact_id,artifacts(id,title,visibility,status)'),
-    supabase.from('artifacts').select('id,title,visibility,status').eq('project_id', projectId).order('created_at', { ascending: false }),
+    supabase.from('artifacts').select('id,title,visibility,status,origin,created_at,artifact_versions(id,version_number,file_name,mime_type,byte_size,uploaded_at,superseded_at)').eq('project_id', projectId).order('created_at', { ascending: false }),
     supabase.from('project_asset_items').select('id,stable_key,status,internal_note,metadata,updated_at').eq('project_id', projectId).order('stable_key'),
     supabase.from('deliverables').select('id,stable_key,title,status,client_visible,approval_requested_at,approved_at,metadata').eq('project_id', projectId).order('title'),
     supabase.from('training_records').select('id,stable_key,status,signed_off_at,metadata').eq('project_id', projectId).order('stable_key'),

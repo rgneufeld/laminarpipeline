@@ -1,4 +1,5 @@
 import { supabase } from './supabase-client.js';
+import { uploadProjectArtifact } from './artifact-repository.js';
 import { ICONS, autoResize } from './ui.js';
 import { COUNTABLE_STAGES, DONE_STAGES, getValidTransitions, isRescope, STAGE_META, stageFromDatabase } from './stages.js';
 import { addCycleTimeEntry, addCycleWorkItem, attachQualificationArtifact, closeOperatingCycle, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
@@ -17,6 +18,7 @@ const sectionViews = {
   overview: document.querySelector('#projectOverview'),
   phases,
   assets: document.querySelector('#projectAssets'),
+  artifacts: document.querySelector('#projectArtifacts'),
   deliverables: document.querySelector('#projectDeliverables'),
   training: document.querySelector('#projectTraining'),
   cycles: document.querySelector('#projectCycles'),
@@ -25,7 +27,7 @@ const sectionViews = {
 
 let workspace = null;
 let sections = null;
-let activeView = ['overview', 'phases', 'assets', 'deliverables', 'training', 'cycles', 'details'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
+let activeView = ['overview', 'phases', 'assets', 'artifacts', 'deliverables', 'training', 'cycles', 'details'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'overview';
 let openStageTaskId = null;
 let openNoteTaskId = null;
 let pendingRescope = null;
@@ -76,6 +78,8 @@ function renderSectionData(project, tasks) {
     const def = definitionByKey(project, 'assets', item.stable_key);
     return `<article class="asset-card"><div class="asset-card-header"><div><div class="asset-name">${esc(def.name || item.stable_key)}</div><div class="asset-cat">${esc(def.category || 'Project asset')}</div></div><select class="status-select" data-action="asset-status" data-item-id="${esc(item.id)}"><option value="missing" ${item.status === 'missing' ? 'selected' : ''}>Not received</option><option value="requested" ${item.status === 'requested' ? 'selected' : ''}>Requested</option><option value="received" ${item.status === 'received' ? 'selected' : ''}>Received</option><option value="not_required" ${item.status === 'not_required' ? 'selected' : ''}>Not required</option></select></div>${def.description ? `<p class="project-data-description">${esc(def.description)}</p>` : ''}<textarea class="asset-note" rows="2" data-item-note="${esc(item.id)}" placeholder="Secure reference or internal note…">${esc(item.internal_note || '')}</textarea><button class="btn btn-ghost btn-sm" type="button" data-action="asset-save" data-item-id="${esc(item.id)}">Save asset</button></article>`;
   }).join('')}</div>` : emptyState('No materialized asset requirements are available for this project yet.');
+
+  sectionViews.artifacts.innerHTML = `<section class="project-data-panel artifact-upload-panel"><div><div class="section-label">Project documents</div><p class="project-data-note">Files are private by default, versioned rather than overwritten, and recorded in the project audit history.</p></div><form class="artifact-upload-form" data-action="artifact-upload"><input name="title" maxlength="180" placeholder="Document title (optional)"><select name="visibility"><option value="internal">Internal only</option><option value="client">Client-visible after approval</option><option value="restricted">Restricted internal access</option><option value="client_upload">Client-provided document</option></select><input name="file" type="file" required><button class="btn btn-primary btn-sm" type="submit">Upload document</button></form></section>${sections.artifacts.length ? `<div class="artifact-list">${sections.artifacts.map(artifact => { const versions = (artifact.artifact_versions || []).filter(version => !version.superseded_at).sort((a, b) => Number(b.version_number) - Number(a.version_number)); const current = versions[0]; return `<article class="artifact-card"><div><div class="artifact-title">${esc(artifact.title)}</div><p class="project-data-note">${esc(artifact.visibility)} · ${esc(artifact.origin || 'upload')} · ${esc(artifact.status)}</p>${current ? `<p class="project-data-note">${esc(current.file_name)} · v${esc(current.version_number)}${current.byte_size ? ` · ${(Number(current.byte_size) / 1024).toFixed(1)} KB` : ''}</p>` : '<p class="project-data-note">Upload pending.</p>'}</div><form class="artifact-version-form" data-action="artifact-version" data-artifact-id="${esc(artifact.id)}"><input name="file" type="file" required><button class="btn btn-ghost btn-sm" type="submit">Add version</button></form></article>`; }).join('')}</div>` : emptyState('No project documents have been uploaded yet.')}`;
 
   sectionViews.deliverables.innerHTML = sections.deliverables.length ? `<div class="deliverable-list">${sections.deliverables.map(item => {
     const def = definitionByKey(project, 'deliverables', item.stable_key);
@@ -263,6 +267,32 @@ sectionViews.assets.addEventListener('click', event => {
   const statusSelect = card?.querySelector('[data-action="asset-status"]');
   const note = card?.querySelector('[data-item-note]');
   if (itemId && statusSelect && note) void persistSection(() => updateAssetItem({ itemId, status: statusSelect.value, internalNote: note.value }));
+});
+sectionViews.artifacts.addEventListener('submit', event => {
+  const form = event.target.closest('form[data-action]');
+  if (!form || !workspace) return;
+  event.preventDefault();
+  const data = new FormData(form);
+  const file = data.get('file');
+  const isVersion = form.dataset.action === 'artifact-version';
+  const button = form.querySelector('button[type="submit"]');
+  if (!(file instanceof File) || !file.size) { setStatus('Choose a document to upload.'); return; }
+  if (button) { button.disabled = true; button.textContent = 'Uploading…'; }
+  setStatus('Preparing secure document upload…');
+  void uploadProjectArtifact({
+    projectId: workspace.project.id,
+    file,
+    title: String(data.get('title') || file.name),
+    visibility: isVersion ? 'internal' : String(data.get('visibility') || 'internal'),
+    artifactId: isVersion ? form.dataset.artifactId : null,
+  }).then(async () => {
+    await loadProject();
+    setStatus('Document uploaded to Supabase and recorded in the audit history.');
+  }).catch(error => {
+    setStatus(error instanceof Error ? error.message : 'Unable to upload document.');
+  }).finally(() => {
+    if (button) { button.disabled = false; button.textContent = isVersion ? 'Add version' : 'Upload document'; }
+  });
 });
 sectionViews.deliverables.addEventListener('click', event => {
   const button = event.target.closest('[data-action="deliverable-save"]');

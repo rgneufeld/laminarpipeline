@@ -1,0 +1,20 @@
+import { supabase } from './supabase-client.js';
+
+async function invokeArtifactUpload(payload) {
+  const { data, error } = await supabase.functions.invoke('artifact-upload', { body: payload });
+  if (error) throw new Error(error.message);
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function uploadProjectArtifact({ projectId, file, title, visibility, artifactId = null }) {
+  if (!(file instanceof File)) throw new Error('Choose a document to upload.');
+  const prepared = await invokeArtifactUpload({
+    action: 'prepare', projectId, artifactId, title: title || file.name,
+    visibility, fileName: file.name, mimeType: file.type, byteSize: file.size,
+  });
+  const { error: uploadError } = await supabase.storage.from('artifacts').uploadToSignedUrl(prepared.storagePath, prepared.token, file, { contentType: file.type || 'application/octet-stream' });
+  if (uploadError) throw new Error(uploadError.message);
+  await invokeArtifactUpload({ action: 'complete', projectId, versionId: prepared.versionId });
+  return prepared.artifactId;
+}
