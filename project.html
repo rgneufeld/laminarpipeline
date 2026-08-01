@@ -26,7 +26,22 @@
     <div class="summary-top"><span class="bar-label">Progress</span><div class="progress-bar-wrap"><div class="progress-bar-fill" id="projectProgressBar"></div></div><span class="progress-count" id="projectProgressCount"></span></div>
   </section>
   <p class="project-workspace-status" id="projectWorkspaceStatus" role="status" aria-live="polite">Loading project…</p>
-  <div id="projectPhases"></div>
+  <nav class="tab-nav project-tab-nav" id="projectWorkspaceNav" aria-label="Project workspace sections">
+    <button class="tab-btn" type="button" data-view="overview">Overview</button>
+    <button class="tab-btn" type="button" data-view="phases">Phases</button>
+    <button class="tab-btn" type="button" data-view="assets">Assets</button>
+    <button class="tab-btn" type="button" data-view="deliverables">Deliverables</button>
+    <button class="tab-btn" type="button" data-view="training">Training</button>
+    <button class="tab-btn" type="button" data-view="cycles">Operating Cycles</button>
+    <button class="tab-btn" type="button" data-view="details">Project Details</button>
+  </nav>
+  <section class="tab-content" id="projectOverview"></section>
+  <section class="tab-content" id="projectPhases"></section>
+  <section class="tab-content" id="projectAssets"></section>
+  <section class="tab-content" id="projectDeliverables"></section>
+  <section class="tab-content" id="projectTraining"></section>
+  <section class="tab-content" id="projectCycles"></section>
+  <section class="tab-content" id="projectDetails"></section>
 </main>
 
 <section class="auth-gate" id="authGate" aria-labelledby="authGateTitle" hidden><div class="auth-gate-card"><div class="eyebrow">Laminar Pipeline</div><h1 class="page-title" id="authGateTitle">Sign in to your workspace</h1><p class="page-desc">Use your Laminar Pipeline email and password to access the projects assigned to you.</p><form class="auth-form" id="authForm"><label for="authEmail">Email</label><input id="authEmail" name="email" type="email" autocomplete="email" required><label for="authPassword">Password</label><input id="authPassword" name="password" type="password" autocomplete="current-password" required><button class="btn btn-primary auth-submit" id="authSubmit" type="submit">Sign in</button><p class="auth-message" id="authMessage" role="status" aria-live="polite"></p></form></div></section>
