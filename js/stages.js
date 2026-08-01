@@ -27,7 +27,7 @@ export const STAGE_META = {
 // 'blocked' additionally allows → blockedFrom value (checked dynamically).
 const _TRANSITIONS = {
   'pending':       ['in-scope', 'na'],
-  'in-scope':      ['active', 'na', 'blocked'],
+  'in-scope':      ['pending', 'active', 'na', 'blocked'],
   'na':            ['in-scope'],
   'active':        ['client-review', 'complete', 'blocked', 'in-scope', 'na'],
   'blocked':       ['na'],
@@ -76,3 +76,14 @@ export const COUNTABLE_STAGES = new Set(['in-scope', 'active', 'blocked', 'clien
 
 // Stages considered done for progress purposes.
 export const DONE_STAGES = new Set(['complete', 'delivered']);
+
+// Supabase stores enum values with underscores while the established Laminar UI
+// uses readable hyphenated values. Keep the translation here so every browser
+// surface shares one stage model instead of maintaining a second transition map.
+export function stageFromDatabase(stage) {
+  return String(stage || 'pending').replaceAll('_', '-');
+}
+
+export function stageToDatabase(stage) {
+  return String(stage || 'pending').replaceAll('-', '_');
+}
