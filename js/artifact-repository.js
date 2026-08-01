@@ -18,3 +18,12 @@ export async function uploadProjectArtifact({ projectId, file, title, visibility
   await invokeArtifactUpload({ action: 'complete', projectId, versionId: prepared.versionId });
   return prepared.artifactId;
 }
+
+export async function artifactDownloadUrl({ projectId, artifactId }) {
+  const data = await invokeArtifactUpload({ action: 'download', projectId, artifactId });
+  return data.url;
+}
+
+export async function publishClientArtifactCopy({ projectId, artifactId }) {
+  return invokeArtifactUpload({ action: 'publish-client-copy', projectId, artifactId });
+}
