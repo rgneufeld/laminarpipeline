@@ -14,6 +14,8 @@ const clientName = document.querySelector('#clientName');
 
 let organisationId = null;
 let canCreateProjects = false;
+const shouldMaterializeLegacy = new URLSearchParams(location.search).get('materialize') === '1';
+let materializationStarted = false;
 
 function setWorkspaceStatus(value) {
   workspaceStatus.textContent = value;
@@ -127,6 +129,30 @@ async function loadWorkspace() {
 
   renderProjects(projects, taskCounts);
   setWorkspaceStatus(`${projects.length} project${projects.length === 1 ? '' : 's'} accessible to you.`);
+  if (shouldMaterializeLegacy && !materializationStarted) {
+    materializationStarted = true;
+    await materializeLegacyProjects(projects);
+  }
+}
+
+async function materializeLegacyProjects(projects) {
+  const { data: isPlatformAdmin, error: roleError } = await supabase.rpc('is_platform_admin');
+  if (roleError || isPlatformAdmin !== true) {
+    setWorkspaceStatus(roleError?.message || 'Platform administrator access is required to materialize imported data.');
+    return;
+  }
+  setWorkspaceStatus(`Materializing preserved Laminar data for ${projects.length} project${projects.length === 1 ? '' : 's'}…`);
+  const outcomes = await Promise.all(projects.map(async project => {
+    const { data, error } = await supabase.functions.invoke('materialize-legacy-project', { body: { projectId: project.id } });
+    return { project, data, error };
+  }));
+  const completed = outcomes.filter(outcome => !outcome.error).length;
+  const failures = outcomes.filter(outcome => outcome.error);
+  if (failures.length) {
+    setWorkspaceStatus(`${completed} project${completed === 1 ? '' : 's'} materialized. ${failures.length} project${failures.length === 1 ? '' : 's'} could not be materialized: ${failures[0].error.message}`);
+    return;
+  }
+  setWorkspaceStatus(`Materialized preserved assets, deliverables, training, and operating-cycle data for ${completed} project${completed === 1 ? '' : 's'}.`);
 }
 
 function toggleCreatePanel(open) {
