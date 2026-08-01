@@ -50,7 +50,7 @@ export async function loadProjectWorkspace(projectId) {
 
 export async function loadProjectSections(projectId) {
   const [qualificationResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult] = await Promise.all([
-    supabase.from('project_qualification_items').select('stable_key,complete,completed_at').eq('project_id', projectId),
+    supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at').eq('project_id', projectId),
     supabase.from('project_asset_items').select('id,stable_key,status,internal_note,metadata,updated_at').eq('project_id', projectId).order('stable_key'),
     supabase.from('deliverables').select('id,stable_key,title,status,client_visible,approval_requested_at,approved_at,metadata').eq('project_id', projectId).order('title'),
     supabase.from('training_records').select('id,stable_key,status,signed_off_at,metadata').eq('project_id', projectId).order('stable_key'),
@@ -97,3 +97,13 @@ export async function saveTaskNote({ taskId, visibility, body }) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+async function callMutation(name, args) {
+  const { error } = await supabase.rpc(name, args);
+  if (error) throw new Error(error.message);
+}
+
+export const updateAssetItem = ({ itemId, status, internalNote }) => callMutation('update_project_asset_item', { p_item: itemId, p_status: status, p_internal_note: internalNote });
+export const updateDeliverable = ({ deliverableId, status, clientVisible }) => callMutation('update_project_deliverable', { p_deliverable: deliverableId, p_status: status, p_client_visible: clientVisible });
+export const updateQualification = ({ itemId, complete }) => callMutation('update_project_qualification', { p_item: itemId, p_complete: complete });
+export const updateTraining = ({ recordId, status }) => callMutation('update_training_record', { p_record: recordId, p_status: status });

@@ -1,7 +1,7 @@
 import { supabase } from './supabase-client.js';
 import { ICONS, autoResize } from './ui.js';
 import { COUNTABLE_STAGES, DONE_STAGES, getValidTransitions, isRescope, STAGE_META, stageFromDatabase } from './stages.js';
-import { loadProjectSections, loadProjectWorkspace, saveTaskNote, transitionTask } from './project-repository.js';
+import { loadProjectSections, loadProjectWorkspace, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
 
 const projectId = new URLSearchParams(location.search).get('id');
 const projectName = document.querySelector('#projectName');
@@ -63,22 +63,22 @@ function renderSectionData(project, tasks) {
       <article class="project-data-card"><span>Assets</span><strong>${sections.assets.filter(item => item.status === 'received').length} / ${sections.assets.length}</strong><p>Required and supporting inputs received.</p></article>
       <article class="project-data-card"><span>Deliverables</span><strong>${sections.deliverables.filter(item => item.status === 'approved').length} / ${sections.deliverables.length}</strong><p>Approved deliverables.</p></article>
     </div>
-    <section class="project-data-panel"><div class="section-label">Qualification</div>${qualificationDefs.length ? `<div class="project-check-list">${qualificationDefs.map(item => `<div class="project-check-row${qualification.get(item.id)?.complete ? ' complete' : ''}"><span>${qualification.get(item.id)?.complete ? '✓' : '○'}</span>${esc(item.label)}</div>`).join('')}</div>` : emptyState('No qualification items were defined for this playbook.')}</section>`;
+    <section class="project-data-panel"><div class="section-label">Qualification</div>${qualificationDefs.length ? `<div class="project-check-list">${qualificationDefs.map(item => { const row = qualification.get(item.id); return `<label class="project-check-row${row?.complete ? ' complete' : ''}"><input type="checkbox" data-action="qualification-update" data-item-id="${esc(row?.id || '')}" ${row?.complete ? 'checked' : ''} ${row ? '' : 'disabled'}><span>${row?.complete ? '✓' : '○'}</span>${esc(item.label)}</label>`; }).join('')}</div>` : emptyState('No qualification items were defined for this playbook.')}</section>`;
 
   sectionViews.assets.innerHTML = sections.assets.length ? `<div class="asset-grid">${sections.assets.map(item => {
     const def = definitionByKey(project, 'assets', item.stable_key);
-    return `<article class="asset-card"><div class="asset-card-header"><div><div class="asset-name">${esc(def.name || item.stable_key)}</div><div class="asset-cat">${esc(def.category || 'Project asset')}</div></div><span class="stage-pill stage-${esc(item.status === 'not_required' ? 'na' : item.status === 'received' ? 'complete' : item.status === 'requested' ? 'active' : 'pending')}">${esc(displayStatus(item.status))}</span></div>${def.description ? `<p class="project-data-description">${esc(def.description)}</p>` : ''}${item.internal_note ? `<p class="project-data-note">${esc(item.internal_note)}</p>` : ''}</article>`;
+    return `<article class="asset-card"><div class="asset-card-header"><div><div class="asset-name">${esc(def.name || item.stable_key)}</div><div class="asset-cat">${esc(def.category || 'Project asset')}</div></div><select class="status-select" data-action="asset-status" data-item-id="${esc(item.id)}"><option value="missing" ${item.status === 'missing' ? 'selected' : ''}>Not received</option><option value="requested" ${item.status === 'requested' ? 'selected' : ''}>Requested</option><option value="received" ${item.status === 'received' ? 'selected' : ''}>Received</option><option value="not_required" ${item.status === 'not_required' ? 'selected' : ''}>Not required</option></select></div>${def.description ? `<p class="project-data-description">${esc(def.description)}</p>` : ''}<textarea class="asset-note" rows="2" data-item-note="${esc(item.id)}" placeholder="Secure reference or internal note…">${esc(item.internal_note || '')}</textarea><button class="btn btn-ghost btn-sm" type="button" data-action="asset-save" data-item-id="${esc(item.id)}">Save asset</button></article>`;
   }).join('')}</div>` : emptyState('No materialized asset requirements are available for this project yet.');
 
   sectionViews.deliverables.innerHTML = sections.deliverables.length ? `<div class="deliverable-list">${sections.deliverables.map(item => {
     const def = definitionByKey(project, 'deliverables', item.stable_key);
-    return `<article class="deliverable-card"><div class="deliverable-header"><span class="deliverable-name">${esc(item.title || def.name || item.stable_key || 'Deliverable')}</span><span class="stage-pill stage-${esc(item.status === 'approved' ? 'complete' : item.status === 'delivered' ? 'delivered' : 'pending')}">${esc(displayStatus(item.status))}</span></div>${def.description ? `<p class="deliverable-desc">${esc(def.description)}</p>` : ''}<p class="project-data-note">${item.client_visible ? 'Client-visible delivery item' : 'Internal delivery item'}</p></article>`;
+    return `<article class="deliverable-card"><div class="deliverable-header"><span class="deliverable-name">${esc(item.title || def.name || item.stable_key || 'Deliverable')}</span><select class="status-select" data-deliverable-status="${esc(item.id)}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>Pending</option><option value="delivered" ${item.status === 'delivered' ? 'selected' : ''}>Delivered</option><option value="approved" ${item.status === 'approved' ? 'selected' : ''}>Approved</option></select></div>${def.description ? `<p class="deliverable-desc">${esc(def.description)}</p>` : ''}<label class="project-visibility-control"><input type="checkbox" data-deliverable-visible="${esc(item.id)}" ${item.client_visible ? 'checked' : ''}> Approved for client visibility</label><button class="btn btn-ghost btn-sm" type="button" data-action="deliverable-save" data-item-id="${esc(item.id)}">Save deliverable</button></article>`;
   }).join('')}</div>` : emptyState('No materialized deliverables are available for this project yet.');
 
   sectionViews.training.innerHTML = sections.training.length ? `<div class="training-list">${sections.training.map(item => {
     const def = definitionByKey(project, 'training', item.stable_key);
     const competencies = item.metadata?.competencies && typeof item.metadata.competencies === 'object' ? Object.values(item.metadata.competencies).filter(Boolean).length : 0;
-    return `<article class="training-card"><div class="training-card-header"><div class="training-tool-info"><div class="training-tool-name">${esc(def.name || item.stable_key)}</div>${def.scope ? `<div class="training-scope">${esc(def.scope)}</div>` : ''}</div><span class="stage-pill stage-${esc(item.status === 'complete' ? 'complete' : item.status === 'in_progress' ? 'active' : 'pending')}">${esc(displayStatus(item.status))}</span></div>${competencies ? `<p class="project-data-note">${competencies} competency record${competencies === 1 ? '' : 's'} preserved.</p>` : ''}</article>`;
+    return `<article class="training-card"><div class="training-card-header"><div class="training-tool-info"><div class="training-tool-name">${esc(def.name || item.stable_key)}</div>${def.scope ? `<div class="training-scope">${esc(def.scope)}</div>` : ''}</div><select class="status-select" data-training-status="${esc(item.id)}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>Pending</option><option value="in_progress" ${item.status === 'in_progress' ? 'selected' : ''}>In progress</option><option value="complete" ${item.status === 'complete' ? 'selected' : ''}>Complete</option></select></div>${competencies ? `<p class="project-data-note">${competencies} competency record${competencies === 1 ? '' : 's'} preserved.</p>` : ''}<button class="btn btn-ghost btn-sm" type="button" data-action="training-save" data-item-id="${esc(item.id)}">Save training</button></article>`;
   }).join('')}</div>` : emptyState('No materialized training records are available for this project yet.');
 
   sectionViews.cycles.innerHTML = sections.cycles.length ? `<div class="cycle-list">${sections.cycles.map(cycle => {
@@ -206,6 +206,48 @@ phases.addEventListener('click', event => {
 workspaceNav.addEventListener('click', event => {
   const button = event.target.closest('[data-view]');
   if (button) showView(button.dataset.view, true);
+});
+
+async function persistSection(action) {
+  setStatus('Saving project section…');
+  try {
+    await action();
+    await loadProject();
+    setStatus('Project section saved to Supabase and recorded in the audit history.');
+  } catch (error) {
+    setStatus(error instanceof Error ? error.message : 'Unable to save project section.');
+  }
+}
+
+sectionViews.overview.addEventListener('change', event => {
+  const input = event.target.closest('[data-action="qualification-update"]');
+  if (input?.dataset.itemId) void persistSection(() => updateQualification({ itemId: input.dataset.itemId, complete: input.checked }));
+});
+sectionViews.assets.addEventListener('click', event => {
+  const button = event.target.closest('[data-action="asset-save"]');
+  if (!button) return;
+  const card = button.closest('.asset-card');
+  const itemId = button.dataset.itemId;
+  const statusSelect = card?.querySelector('[data-action="asset-status"]');
+  const note = card?.querySelector('[data-item-note]');
+  if (itemId && statusSelect && note) void persistSection(() => updateAssetItem({ itemId, status: statusSelect.value, internalNote: note.value }));
+});
+sectionViews.deliverables.addEventListener('click', event => {
+  const button = event.target.closest('[data-action="deliverable-save"]');
+  if (!button) return;
+  const card = button.closest('.deliverable-card');
+  const itemId = button.dataset.itemId;
+  const statusSelect = card?.querySelector(`[data-deliverable-status="${itemId}"]`);
+  const visible = card?.querySelector(`[data-deliverable-visible="${itemId}"]`);
+  if (itemId && statusSelect && visible) void persistSection(() => updateDeliverable({ deliverableId: itemId, status: statusSelect.value, clientVisible: visible.checked }));
+});
+sectionViews.training.addEventListener('click', event => {
+  const button = event.target.closest('[data-action="training-save"]');
+  if (!button) return;
+  const card = button.closest('.training-card');
+  const itemId = button.dataset.itemId;
+  const statusSelect = card?.querySelector(`[data-training-status="${itemId}"]`);
+  if (itemId && statusSelect) void persistSection(() => updateTraining({ recordId: itemId, status: statusSelect.value }));
 });
 
 window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
