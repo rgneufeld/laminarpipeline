@@ -1,7 +1,7 @@
 import { supabase } from './supabase-client.js';
 import { ICONS, autoResize } from './ui.js';
 import { COUNTABLE_STAGES, DONE_STAGES, getValidTransitions, isRescope, STAGE_META, stageFromDatabase } from './stages.js';
-import { loadProjectSections, loadProjectWorkspace, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
+import { addCycleTimeEntry, addCycleWorkItem, closeOperatingCycle, loadProjectSections, loadProjectWorkspace, openOperatingCycle, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
 
 const projectId = new URLSearchParams(location.search).get('id');
 const projectName = document.querySelector('#projectName');
@@ -81,12 +81,14 @@ function renderSectionData(project, tasks) {
     return `<article class="training-card"><div class="training-card-header"><div class="training-tool-info"><div class="training-tool-name">${esc(def.name || item.stable_key)}</div>${def.scope ? `<div class="training-scope">${esc(def.scope)}</div>` : ''}</div><select class="status-select" data-training-status="${esc(item.id)}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>Pending</option><option value="in_progress" ${item.status === 'in_progress' ? 'selected' : ''}>In progress</option><option value="complete" ${item.status === 'complete' ? 'selected' : ''}>Complete</option></select></div>${Array.isArray(def.competencies) && def.competencies.length ? `<ul class="training-competencies">${def.competencies.map(competency => `<li>${esc(competency)}</li>`).join('')}</ul>` : ''}<div class="training-actions"><button class="btn btn-ghost btn-sm" type="button" data-action="training-save" data-item-id="${esc(item.id)}">Save training</button></div></article>`;
   }).join('')}</div>` : emptyState('No materialized training records are available for this project yet.');
 
-  sectionViews.cycles.innerHTML = sections.cycles.length ? `<div class="cycle-list">${sections.cycles.map(cycle => {
+  const cycleIntro = `<section class="project-data-panel cycle-create-panel"><div><div class="section-label">Operating cycle</div><p class="project-data-note">Open one deliberate monthly or quarterly delivery period. Its work, capacity, time, evidence, and close-out are then retained in the project audit history.</p></div><form class="cycle-open-form" data-action="cycle-open"><label>Period <input type="month" name="period" required value="${new Date().toISOString().slice(0, 7)}"></label><button class="btn btn-primary btn-sm" type="submit">Open cycle</button></form></section>`;
+  sectionViews.cycles.innerHTML = `${cycleIntro}${sections.cycles.length ? `<div class="cycle-list">${sections.cycles.map(cycle => {
     const workItems = sections.workItems.filter(item => item.cycle_id === cycle.id);
     const timeEntries = sections.timeEntries.filter(item => item.cycle_id === cycle.id);
     const hours = timeEntries.reduce((sum, entry) => sum + Number(entry.hours || 0), 0);
-    return `<article class="cycle-header-card"><div class="cycle-header-top"><div><div class="cycle-header-period">${esc(String(cycle.period).slice(0, 7))}</div><p class="project-data-note">${workItems.length} work item${workItems.length === 1 ? '' : 's'} · ${hours.toFixed(1)} recorded hours</p></div><span class="stage-pill stage-${esc(cycle.status === 'closed' ? 'complete' : 'active')}">${esc(displayStatus(cycle.status))}</span></div></article>`;
-  }).join('')}</div>` : emptyState('No materialized operating cycles are available for this project yet.');
+    const closed = cycle.status === 'closed';
+    return `<article class="cycle-header-card"><div class="cycle-header-top"><div><div class="cycle-header-period">${esc(String(cycle.period).slice(0, 7))}</div><p class="project-data-note">${workItems.length} work item${workItems.length === 1 ? '' : 's'} · ${hours.toFixed(1)} recorded hours</p></div><span class="stage-pill stage-${esc(closed ? 'complete' : 'active')}">${esc(displayStatus(cycle.status))}</span></div><div class="cycle-detail-grid"><div><strong>Work items</strong>${workItems.length ? `<ul>${workItems.map(item => `<li>${esc(item.title)}${item.estimated_hours ? ` · ${esc(item.estimated_hours)}h planned` : ''}</li>`).join('')}</ul>` : '<p class="project-data-note">No work items yet.</p>'}</div><div><strong>Time entries</strong>${timeEntries.length ? `<ul>${timeEntries.map(entry => `<li>${esc(entry.category)} · ${esc(entry.hours)}h</li>`).join('')}</ul>` : '<p class="project-data-note">No time entries yet.</p>'}</div></div>${closed ? '' : `<form class="cycle-inline-form" data-action="cycle-work-item" data-cycle-id="${esc(cycle.id)}"><input name="title" placeholder="Add scoped work item" required><input name="hours" type="number" min="0" step="0.25" placeholder="Est. hours"><button class="btn btn-ghost btn-sm" type="submit">Add work</button></form><form class="cycle-inline-form" data-action="cycle-time-entry" data-cycle-id="${esc(cycle.id)}"><input name="hours" type="number" min="0.25" step="0.25" placeholder="Hours" required><input name="category" placeholder="Category" required><input name="note" placeholder="Note (optional)"><button class="btn btn-ghost btn-sm" type="submit">Log time</button></form><button class="btn btn-ghost btn-sm cycle-close" type="button" data-action="cycle-close" data-cycle-id="${esc(cycle.id)}">Close cycle</button>`}</article>`;
+  }).join('')}</div>` : emptyState('No operating cycles have been opened for this project.')}`;
 
   sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Pinned playbook</dt><dd>${esc(playbookName(project))} · version ${esc(workspace.version?.version_number || '—')}</dd></div><div><dt>Last updated</dt><dd>${project.updated_at ? esc(new Date(project.updated_at).toLocaleString()) : 'Not recorded'}</dd></div></dl></section><section class="project-data-panel project-activity"><div class="section-label">Recent audit activity</div>${sections.audit.length ? `<div class="project-activity-list">${sections.audit.slice(0, 8).map(event => `<div><strong>${esc(event.event_type.replaceAll('.', ' '))}</strong><span>${esc(new Date(event.occurred_at).toLocaleString())}</span></div>`).join('')}</div>` : emptyState('No audit activity is visible yet.')}</section>`;
 }
@@ -252,6 +254,26 @@ sectionViews.training.addEventListener('click', event => {
   const itemId = button.dataset.itemId;
   const statusSelect = card?.querySelector(`[data-training-status="${itemId}"]`);
   if (itemId && statusSelect) void persistSection(() => updateTraining({ recordId: itemId, status: statusSelect.value }));
+});
+sectionViews.cycles.addEventListener('submit', event => {
+  const form = event.target.closest('form[data-action]');
+  if (!form || !workspace) return;
+  event.preventDefault();
+  const data = new FormData(form);
+  if (form.dataset.action === 'cycle-open') {
+    const period = data.get('period');
+    if (period) void persistSection(() => openOperatingCycle({ projectId: workspace.project.id, period: `${period}-01` }));
+    return;
+  }
+  const cycleId = form.dataset.cycleId;
+  if (form.dataset.action === 'cycle-work-item' && cycleId) void persistSection(() => addCycleWorkItem({ cycleId, title: String(data.get('title') || ''), estimatedHours: Number(data.get('hours')) || null }));
+  if (form.dataset.action === 'cycle-time-entry' && cycleId) void persistSection(() => addCycleTimeEntry({ cycleId, hours: Number(data.get('hours')), category: String(data.get('category') || ''), note: String(data.get('note') || '') }));
+});
+sectionViews.cycles.addEventListener('click', event => {
+  const button = event.target.closest('[data-action="cycle-close"]');
+  if (!button?.dataset.cycleId) return;
+  if (!confirm('Close this cycle? Its work and time history will remain visible but the period will no longer accept changes.')) return;
+  void persistSection(() => closeOperatingCycle({ cycleId: button.dataset.cycleId }));
 });
 
 window.addEventListener('hashchange', () => showView(location.hash.slice(1)));

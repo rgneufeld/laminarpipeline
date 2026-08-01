@@ -107,3 +107,7 @@ export const updateAssetItem = ({ itemId, status, internalNote }) => callMutatio
 export const updateDeliverable = ({ deliverableId, status, clientVisible }) => callMutation('update_project_deliverable', { p_deliverable: deliverableId, p_status: status, p_client_visible: clientVisible });
 export const updateQualification = ({ itemId, complete }) => callMutation('update_project_qualification', { p_item: itemId, p_complete: complete });
 export const updateTraining = ({ recordId, status }) => callMutation('update_training_record', { p_record: recordId, p_status: status });
+export const openOperatingCycle = ({ projectId, period }) => callMutation('open_operating_cycle', { p_project: projectId, p_period: period });
+export const closeOperatingCycle = ({ cycleId }) => callMutation('close_operating_cycle', { p_cycle: cycleId });
+export const addCycleWorkItem = ({ cycleId, title, estimatedHours }) => callMutation('add_cycle_work_item', { p_cycle: cycleId, p_title: title, p_estimated_hours: estimatedHours || null });
+export const addCycleTimeEntry = ({ cycleId, hours, category, note, occurredOn }) => callMutation('add_cycle_time_entry', { p_cycle: cycleId, p_hours: hours, p_category: category, p_note: note || null, p_occurred_on: occurredOn || null });
