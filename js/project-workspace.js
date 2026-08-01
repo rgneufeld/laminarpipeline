@@ -1,7 +1,7 @@
 import { supabase } from './supabase-client.js';
 import { ICONS, autoResize } from './ui.js';
 import { COUNTABLE_STAGES, DONE_STAGES, getValidTransitions, isRescope, STAGE_META, stageFromDatabase } from './stages.js';
-import { addCycleTimeEntry, addCycleWorkItem, closeOperatingCycle, loadProjectSections, loadProjectWorkspace, openOperatingCycle, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
+import { addCycleTimeEntry, addCycleWorkItem, attachQualificationArtifact, closeOperatingCycle, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
 
 const projectId = new URLSearchParams(location.search).get('id');
 const projectName = document.querySelector('#projectName');
@@ -57,6 +57,12 @@ function renderSectionData(project, tasks) {
   const completedQualification = sections.qualification.filter(item => item.complete).length;
   const countable = tasks.filter(task => COUNTABLE_STAGES.has(task.uiStage));
   const done = tasks.filter(task => DONE_STAGES.has(task.uiStage)).length;
+  const qualificationLinks = new Map();
+  for (const link of sections.qualificationArtifacts) {
+    if (!qualificationLinks.has(link.qualification_item_id)) qualificationLinks.set(link.qualification_item_id, []);
+    qualificationLinks.get(link.qualification_item_id).push(Array.isArray(link.artifacts) ? link.artifacts[0] : link.artifacts);
+  }
+  const availableDocuments = sections.artifacts.filter(item => item.status === 'available');
   sectionViews.overview.innerHTML = `
     <div class="project-section-grid">
       <article class="project-data-card"><span>Delivery progress</span><strong>${done} / ${countable.length}</strong><p>Countable playbook tasks complete.</p></article>
@@ -64,7 +70,7 @@ function renderSectionData(project, tasks) {
       <article class="project-data-card"><span>Assets</span><strong>${sections.assets.filter(item => item.status === 'received').length} / ${sections.assets.length}</strong><p>Required and supporting inputs received.</p></article>
       <article class="project-data-card"><span>Deliverables</span><strong>${sections.deliverables.filter(item => item.status === 'approved').length} / ${sections.deliverables.length}</strong><p>Approved deliverables.</p></article>
     </div>
-    <section class="project-data-panel"><div class="section-label">Qualification</div>${qualificationDefs.length ? `<div class="project-check-list">${qualificationDefs.map(item => { const row = qualification.get(item.id); return `<label class="project-check-row${row?.complete ? ' complete' : ''}"><input type="checkbox" data-action="qualification-update" data-item-id="${esc(row?.id || '')}" ${row?.complete ? 'checked' : ''} ${row ? '' : 'disabled'}><span>${row?.complete ? '✓' : '○'}</span>${esc(item.label)}</label>`; }).join('')}</div>` : emptyState('No qualification items were defined for this playbook.')}</section>`;
+    <section class="project-data-panel"><div class="section-label">Qualification</div><p class="project-data-note">Record the decision rationale and attach supporting project documents to each qualification item.</p>${qualificationDefs.length ? `<div class="qualification-record-list">${qualificationDefs.map(item => { const row = qualification.get(item.id); const linked = row ? qualificationLinks.get(row.id) || [] : []; return `<article class="qualification-record${row?.complete ? ' complete' : ''}"><label class="project-check-row"><input type="checkbox" data-action="qualification-update" data-item-id="${esc(row?.id || '')}" ${row?.complete ? 'checked' : ''} ${row ? '' : 'disabled'}><span>${row?.complete ? '✓' : '○'}</span>${esc(item.label)}</label>${row ? `<textarea class="qualification-note" rows="2" data-qualification-note="${esc(row.id)}" placeholder="Internal rationale, decision context, or follow-up…">${esc(row.internal_note || '')}</textarea><div class="qualification-evidence"><strong>Supporting documents</strong>${linked.length ? `<ul>${linked.filter(Boolean).map(doc => `<li>${esc(doc.title || 'Project document')} <button type="button" class="text-button" data-action="qualification-document-detach" data-item-id="${esc(row.id)}" data-artifact-id="${esc(doc.id)}">Remove</button></li>`).join('')}</ul>` : '<p>No supporting documents attached.</p>'}<div class="qualification-document-actions"><select data-qualification-document="${esc(row.id)}"><option value="">${availableDocuments.length ? 'Attach a project document…' : 'No uploaded project documents yet'}</option>${availableDocuments.filter(doc => !linked.some(attached => attached?.id === doc.id)).map(doc => `<option value="${esc(doc.id)}">${esc(doc.title)} · ${esc(doc.visibility)}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-document-attach" data-item-id="${esc(row.id)}" ${availableDocuments.length ? '' : 'disabled'}>Attach document</button><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-note-save" data-item-id="${esc(row.id)}">Save note</button></div></div>` : ''}</article>`; }).join('')}</div>` : emptyState('No qualification items were defined for this playbook.')}</section>`;
 
   sectionViews.assets.innerHTML = sections.assets.length ? `<div class="asset-grid">${sections.assets.map(item => {
     const def = definitionByKey(project, 'assets', item.stable_key);
@@ -227,7 +233,27 @@ async function persistSection(action) {
 
 sectionViews.overview.addEventListener('change', event => {
   const input = event.target.closest('[data-action="qualification-update"]');
-  if (input?.dataset.itemId) void persistSection(() => updateQualification({ itemId: input.dataset.itemId, complete: input.checked }));
+  if (!input?.dataset.itemId) return;
+  const record = input.closest('.qualification-record');
+  const note = record?.querySelector(`[data-qualification-note="${input.dataset.itemId}"]`);
+  void persistSection(() => updateQualification({ itemId: input.dataset.itemId, complete: input.checked, internalNote: note?.value ?? null }));
+});
+sectionViews.overview.addEventListener('click', event => {
+  const button = event.target.closest('[data-action]');
+  if (!button?.dataset.itemId) return;
+  const record = button.closest('.qualification-record');
+  const itemId = button.dataset.itemId;
+  if (button.dataset.action === 'qualification-note-save') {
+    const checked = record?.querySelector('[data-action="qualification-update"]')?.checked || false;
+    const note = record?.querySelector(`[data-qualification-note="${itemId}"]`)?.value || '';
+    void persistSection(() => updateQualification({ itemId, complete: checked, internalNote: note }));
+  }
+  if (button.dataset.action === 'qualification-document-attach') {
+    const artifactId = record?.querySelector(`[data-qualification-document="${itemId}"]`)?.value;
+    if (!artifactId) { setStatus('Choose an uploaded project document first.'); return; }
+    void persistSection(() => attachQualificationArtifact({ itemId, artifactId }));
+  }
+  if (button.dataset.action === 'qualification-document-detach' && button.dataset.artifactId) void persistSection(() => detachQualificationArtifact({ itemId, artifactId: button.dataset.artifactId }));
 });
 sectionViews.assets.addEventListener('click', event => {
   const button = event.target.closest('[data-action="asset-save"]');

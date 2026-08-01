@@ -49,15 +49,17 @@ export async function loadProjectWorkspace(projectId) {
 }
 
 export async function loadProjectSections(projectId) {
-  const [qualificationResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult] = await Promise.all([
-    supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at').eq('project_id', projectId),
+  const [qualificationResult, qualificationArtifactsResult, artifactsResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult] = await Promise.all([
+    supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at,internal_note').eq('project_id', projectId),
+    supabase.from('qualification_item_artifacts').select('qualification_item_id,artifact_id,artifacts(id,title,visibility,status)'),
+    supabase.from('artifacts').select('id,title,visibility,status').eq('project_id', projectId).order('created_at', { ascending: false }),
     supabase.from('project_asset_items').select('id,stable_key,status,internal_note,metadata,updated_at').eq('project_id', projectId).order('stable_key'),
     supabase.from('deliverables').select('id,stable_key,title,status,client_visible,approval_requested_at,approved_at,metadata').eq('project_id', projectId).order('title'),
     supabase.from('training_records').select('id,stable_key,status,signed_off_at,metadata').eq('project_id', projectId).order('stable_key'),
     supabase.from('operating_cycles').select('id,period,status,locked_at,metadata').eq('project_id', projectId).order('period', { ascending: false }),
     supabase.from('audit_events').select('id,event_type,entity_type,occurred_at,payload').eq('project_id', projectId).order('occurred_at', { ascending: false }).limit(20),
   ]);
-  const error = qualificationResult.error || assetsResult.error || deliverablesResult.error || trainingResult.error || cyclesResult.error || auditResult.error;
+  const error = qualificationResult.error || qualificationArtifactsResult.error || artifactsResult.error || assetsResult.error || deliverablesResult.error || trainingResult.error || cyclesResult.error || auditResult.error;
   if (error) throw new Error(error.message);
   const cycleIds = new Set((cyclesResult.data || []).map(cycle => cycle.id));
   const [workItemsResult, timeEntriesResult] = cycleIds.size ? await Promise.all([
@@ -67,6 +69,8 @@ export async function loadProjectSections(projectId) {
   if (workItemsResult.error || timeEntriesResult.error) throw new Error(workItemsResult.error?.message || timeEntriesResult.error?.message);
   return {
     qualification: qualificationResult.data || [],
+    qualificationArtifacts: (qualificationArtifactsResult.data || []).filter(link => (qualificationResult.data || []).some(item => item.id === link.qualification_item_id)),
+    artifacts: artifactsResult.data || [],
     assets: assetsResult.data || [],
     deliverables: deliverablesResult.data || [],
     training: trainingResult.data || [],
@@ -105,7 +109,9 @@ async function callMutation(name, args) {
 
 export const updateAssetItem = ({ itemId, status, internalNote }) => callMutation('update_project_asset_item', { p_item: itemId, p_status: status, p_internal_note: internalNote });
 export const updateDeliverable = ({ deliverableId, status, clientVisible }) => callMutation('update_project_deliverable', { p_deliverable: deliverableId, p_status: status, p_client_visible: clientVisible });
-export const updateQualification = ({ itemId, complete }) => callMutation('update_project_qualification', { p_item: itemId, p_complete: complete });
+export const updateQualification = ({ itemId, complete, internalNote }) => callMutation('update_project_qualification', { p_item: itemId, p_complete: complete, p_internal_note: internalNote ?? null });
+export const attachQualificationArtifact = ({ itemId, artifactId }) => callMutation('attach_qualification_artifact', { p_item: itemId, p_artifact: artifactId });
+export const detachQualificationArtifact = ({ itemId, artifactId }) => callMutation('detach_qualification_artifact', { p_item: itemId, p_artifact: artifactId });
 export const updateTraining = ({ recordId, status }) => callMutation('update_training_record', { p_record: recordId, p_status: status });
 export const openOperatingCycle = ({ projectId, period }) => callMutation('open_operating_cycle', { p_project: projectId, p_period: period });
 export const closeOperatingCycle = ({ cycleId }) => callMutation('close_operating_cycle', { p_cycle: cycleId });
