@@ -57,7 +57,7 @@ export async function loadProjectSections(projectId) {
     supabase.from('deliverables').select('id,stable_key,title,status,client_visible,approval_requested_at,approved_at,metadata').eq('project_id', projectId).order('title'),
     supabase.from('training_records').select('id,stable_key,status,signed_off_at,metadata').eq('project_id', projectId).order('stable_key'),
     supabase.from('operating_cycles').select('id,period,status,locked_at,metadata').eq('project_id', projectId).order('period', { ascending: false }),
-    supabase.from('audit_events').select('id,event_type,entity_type,occurred_at,payload').eq('project_id', projectId).order('occurred_at', { ascending: false }).limit(20),
+    supabase.from('audit_events').select('id,event_type,entity_type,entity_id,occurred_at,payload').eq('project_id', projectId).order('occurred_at', { ascending: false }).limit(20),
   ]);
   const error = qualificationResult.error || qualificationArtifactsResult.error || artifactsResult.error || assetsResult.error || deliverablesResult.error || trainingResult.error || cyclesResult.error || auditResult.error;
   if (error) throw new Error(error.message);

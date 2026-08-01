@@ -40,6 +40,21 @@ function definition(project) { const version = Array.isArray(project.playbook_ve
 function definitionByKey(project, section, stableKey) { return (definition(project)[section] || []).find(item => item.id === stableKey) || {}; }
 function displayStatus(value) { return String(value || 'pending').replaceAll('_', ' '); }
 function emptyState(message) { return `<div class="project-section-empty">${esc(message)}</div>`; }
+function auditDescription(event, qualificationDefs, qualificationRows) {
+  if (event.event_type === 'qualification.updated') {
+    const row = qualificationRows.find(item => item.id === event.entity_id);
+    const label = qualificationDefs.find(item => item.id === row?.stable_key)?.label || 'Qualification item';
+    const changes = [];
+    if (typeof event.payload?.complete === 'boolean') changes.push(event.payload.complete ? 'marked complete' : 'marked incomplete');
+    if (event.payload?.note_updated) changes.push('internal note updated');
+    return { title: `Qualification · ${label}`, detail: changes.join(' · ') || 'record updated' };
+  }
+  if (event.event_type === 'qualification.artifact_attached') return { title: 'Qualification supporting document attached', detail: 'Evidence link added' };
+  if (event.event_type === 'qualification.artifact_detached') return { title: 'Qualification supporting document removed', detail: 'Evidence link removed' };
+  if (event.event_type === 'artifact.uploaded') return { title: 'Project document uploaded', detail: `Version ${event.payload?.version_number || 'saved'}` };
+  if (event.event_type === 'artifact.client_copy_published') return { title: 'Client document published', detail: 'Approved client copy created' };
+  return { title: String(event.event_type || 'Project activity').replaceAll('.', ' '), detail: '' };
+}
 
 function showView(view, updateHash = false) {
   activeView = sectionViews[view] ? view : 'overview';
@@ -100,7 +115,7 @@ function renderSectionData(project, tasks) {
     return `<article class="cycle-header-card"><div class="cycle-header-top"><div><div class="cycle-header-period">${esc(String(cycle.period).slice(0, 7))}</div><p class="project-data-note">${workItems.length} work item${workItems.length === 1 ? '' : 's'} · ${hours.toFixed(1)} recorded hours</p></div><span class="stage-pill stage-${esc(closed ? 'complete' : 'active')}">${esc(displayStatus(cycle.status))}</span></div><div class="cycle-detail-grid"><div><strong>Work items</strong>${workItems.length ? `<ul>${workItems.map(item => `<li>${esc(item.title)}${item.estimated_hours ? ` · ${esc(item.estimated_hours)}h planned` : ''}</li>`).join('')}</ul>` : '<p class="project-data-note">No work items yet.</p>'}</div><div><strong>Time entries</strong>${timeEntries.length ? `<ul>${timeEntries.map(entry => `<li>${esc(entry.category)} · ${esc(entry.hours)}h</li>`).join('')}</ul>` : '<p class="project-data-note">No time entries yet.</p>'}</div></div>${closed ? '' : `<form class="cycle-inline-form" data-action="cycle-work-item" data-cycle-id="${esc(cycle.id)}"><input name="title" placeholder="Add scoped work item" required><input name="hours" type="number" min="0" step="0.25" placeholder="Est. hours"><button class="btn btn-ghost btn-sm" type="submit">Add work</button></form><form class="cycle-inline-form" data-action="cycle-time-entry" data-cycle-id="${esc(cycle.id)}"><input name="hours" type="number" min="0.25" step="0.25" placeholder="Hours" required><input name="category" placeholder="Category" required><input name="note" placeholder="Note (optional)"><button class="btn btn-ghost btn-sm" type="submit">Log time</button></form><button class="btn btn-ghost btn-sm cycle-close" type="button" data-action="cycle-close" data-cycle-id="${esc(cycle.id)}">Close cycle</button>`}</article>`;
   }).join('')}</div>` : emptyState('No operating cycles have been opened for this project.')}`;
 
-  sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Pinned playbook</dt><dd>${esc(playbookName(project))} · version ${esc(workspace.version?.version_number || '—')}</dd></div><div><dt>Last updated</dt><dd>${project.updated_at ? esc(new Date(project.updated_at).toLocaleString()) : 'Not recorded'}</dd></div></dl></section><section class="project-data-panel project-activity"><div class="section-label">Recent audit activity</div>${sections.audit.length ? `<div class="project-activity-list">${sections.audit.slice(0, 8).map(event => `<div><strong>${esc(event.event_type.replaceAll('.', ' '))}</strong><span>${esc(new Date(event.occurred_at).toLocaleString())}</span></div>`).join('')}</div>` : emptyState('No audit activity is visible yet.')}</section>`;
+  sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Pinned playbook</dt><dd>${esc(playbookName(project))} · version ${esc(workspace.version?.version_number || '—')}</dd></div><div><dt>Last updated</dt><dd>${project.updated_at ? esc(new Date(project.updated_at).toLocaleString()) : 'Not recorded'}</dd></div></dl></section><section class="project-data-panel project-activity"><div class="section-label">Recent audit activity</div>${sections.audit.length ? `<div class="project-activity-list">${sections.audit.slice(0, 8).map(event => { const description = auditDescription(event, qualificationDefs, sections.qualification); return `<div><p><strong>${esc(description.title)}</strong>${description.detail ? `<small>${esc(description.detail)}</small>` : ''}</p><span>${esc(new Date(event.occurred_at).toLocaleString())}</span></div>`; }).join('')}</div>` : emptyState('No audit activity is visible yet.')}</section>`;
 }
 
 function render(project, tasks) {
