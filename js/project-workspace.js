@@ -33,6 +33,7 @@ let pendingRescope = null;
 function esc(value) { return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]); }
 function setStatus(value = '') { status.textContent = value; }
 function playbookName(row) { const version = Array.isArray(row.playbook_versions) ? row.playbook_versions[0] : row.playbook_versions; const playbook = version && (Array.isArray(version.playbooks) ? version.playbooks[0] : version.playbooks); return playbook?.name || 'Laminar project'; }
+function playbookCode(row) { const version = Array.isArray(row.playbook_versions) ? row.playbook_versions[0] : row.playbook_versions; const playbook = version && (Array.isArray(version.playbooks) ? version.playbooks[0] : version.playbooks); return playbook?.code || ''; }
 function definition(project) { const version = Array.isArray(project.playbook_versions) ? project.playbook_versions[0] : project.playbook_versions; return version?.definition && typeof version.definition === 'object' ? version.definition : {}; }
 function definitionByKey(project, section, stableKey) { return (definition(project)[section] || []).find(item => item.id === stableKey) || {}; }
 function displayStatus(value) { return String(value || 'pending').replaceAll('_', ' '); }
@@ -77,8 +78,7 @@ function renderSectionData(project, tasks) {
 
   sectionViews.training.innerHTML = sections.training.length ? `<div class="training-list">${sections.training.map(item => {
     const def = definitionByKey(project, 'training', item.stable_key);
-    const competencies = item.metadata?.competencies && typeof item.metadata.competencies === 'object' ? Object.values(item.metadata.competencies).filter(Boolean).length : 0;
-    return `<article class="training-card"><div class="training-card-header"><div class="training-tool-info"><div class="training-tool-name">${esc(def.name || item.stable_key)}</div>${def.scope ? `<div class="training-scope">${esc(def.scope)}</div>` : ''}</div><select class="status-select" data-training-status="${esc(item.id)}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>Pending</option><option value="in_progress" ${item.status === 'in_progress' ? 'selected' : ''}>In progress</option><option value="complete" ${item.status === 'complete' ? 'selected' : ''}>Complete</option></select></div>${competencies ? `<p class="project-data-note">${competencies} competency record${competencies === 1 ? '' : 's'} preserved.</p>` : ''}<button class="btn btn-ghost btn-sm" type="button" data-action="training-save" data-item-id="${esc(item.id)}">Save training</button></article>`;
+    return `<article class="training-card"><div class="training-card-header"><div class="training-tool-info"><div class="training-tool-name">${esc(def.name || item.stable_key)}</div>${def.scope ? `<div class="training-scope">${esc(def.scope)}</div>` : ''}</div><select class="status-select" data-training-status="${esc(item.id)}"><option value="pending" ${item.status === 'pending' ? 'selected' : ''}>Pending</option><option value="in_progress" ${item.status === 'in_progress' ? 'selected' : ''}>In progress</option><option value="complete" ${item.status === 'complete' ? 'selected' : ''}>Complete</option></select></div>${Array.isArray(def.competencies) && def.competencies.length ? `<ul class="training-competencies">${def.competencies.map(competency => `<li>${esc(competency)}</li>`).join('')}</ul>` : ''}<div class="training-actions"><button class="btn btn-ghost btn-sm" type="button" data-action="training-save" data-item-id="${esc(item.id)}">Save training</button></div></article>`;
   }).join('')}</div>` : emptyState('No materialized training records are available for this project yet.');
 
   sectionViews.cycles.innerHTML = sections.cycles.length ? `<div class="cycle-list">${sections.cycles.map(cycle => {
@@ -88,7 +88,7 @@ function renderSectionData(project, tasks) {
     return `<article class="cycle-header-card"><div class="cycle-header-top"><div><div class="cycle-header-period">${esc(String(cycle.period).slice(0, 7))}</div><p class="project-data-note">${workItems.length} work item${workItems.length === 1 ? '' : 's'} · ${hours.toFixed(1)} recorded hours</p></div><span class="stage-pill stage-${esc(cycle.status === 'closed' ? 'complete' : 'active')}">${esc(displayStatus(cycle.status))}</span></div></article>`;
   }).join('')}</div>` : emptyState('No materialized operating cycles are available for this project yet.');
 
-  sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Playbook</dt><dd>${esc(playbookName(project))}</dd></div><div><dt>Audit events retained</dt><dd>${sections.audit.length} recent events visible</dd></div></dl></section>`;
+  sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Pinned playbook</dt><dd>${esc(playbookName(project))} · version ${esc(workspace.version?.version_number || '—')}</dd></div><div><dt>Last updated</dt><dd>${project.updated_at ? esc(new Date(project.updated_at).toLocaleString()) : 'Not recorded'}</dd></div></dl></section><section class="project-data-panel project-activity"><div class="section-label">Recent audit activity</div>${sections.audit.length ? `<div class="project-activity-list">${sections.audit.slice(0, 8).map(event => `<div><strong>${esc(event.event_type.replaceAll('.', ' '))}</strong><span>${esc(new Date(event.occurred_at).toLocaleString())}</span></div>`).join('')}</div>` : emptyState('No audit activity is visible yet.')}</section>`;
 }
 
 function render(project, tasks) {
@@ -102,6 +102,10 @@ function render(project, tasks) {
   projectProgressBar.style.width = `${percent}%`;
   projectProgressCount.textContent = `${done} / ${countable.length}`;
   projectSummary.hidden = false;
+  const isOperational = ['operating-partnership', 'business-operations', 'digital-presence-operations'].includes(playbookCode(project));
+  const cycleButton = workspaceNav.querySelector('[data-view="cycles"]');
+  cycleButton.hidden = !isOperational;
+  if (!isOperational && activeView === 'cycles') activeView = 'overview';
 
   const grouped = new Map();
   for (const task of tasks) {
