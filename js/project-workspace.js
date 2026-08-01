@@ -14,6 +14,8 @@ const projectProgressCount = document.querySelector('#projectProgressCount');
 const status = document.querySelector('#projectWorkspaceStatus');
 const phases = document.querySelector('#projectPhases');
 const workspaceNav = document.querySelector('#projectWorkspaceNav');
+const projectTabScrollPrev = document.querySelector('#projectTabScrollPrev');
+const projectTabScrollNext = document.querySelector('#projectTabScrollNext');
 const sectionViews = {
   overview: document.querySelector('#projectOverview'),
   phases,
@@ -64,6 +66,7 @@ function showView(view, updateHash = false) {
     button.classList.toggle('active', selected);
     button.setAttribute('aria-current', selected ? 'page' : 'false');
   });
+  workspaceNav.querySelector(`[data-view="${activeView}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   if (updateHash && location.hash !== `#${activeView}`) history.replaceState(null, '', `#${activeView}`);
 }
 
@@ -238,6 +241,8 @@ workspaceNav.addEventListener('click', event => {
   const button = event.target.closest('[data-view]');
   if (button) showView(button.dataset.view, true);
 });
+projectTabScrollPrev?.addEventListener('click', () => workspaceNav.scrollBy({ left: -260, behavior: 'smooth' }));
+projectTabScrollNext?.addEventListener('click', () => workspaceNav.scrollBy({ left: 260, behavior: 'smooth' }));
 
 async function persistSection(action) {
   setStatus('Saving project section…');
