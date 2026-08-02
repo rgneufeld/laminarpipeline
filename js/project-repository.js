@@ -49,9 +49,10 @@ export async function loadProjectWorkspace(projectId) {
 }
 
 export async function loadProjectSections(projectId, organisationId = null) {
-  const [qualificationResult, qualificationArtifactsResult, artifactsResult, artifactGrantsResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult, projectMembersResult, organisationMembersResult, profilesResult] = await Promise.all([
-    supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at,internal_note').eq('project_id', projectId),
+  const [qualificationResult, qualificationArtifactsResult, qualificationApprovalsResult, artifactsResult, artifactGrantsResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult, projectMembersResult, organisationMembersResult, profilesResult] = await Promise.all([
+    supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at,internal_note,client_approval_priority').eq('project_id', projectId),
     supabase.from('qualification_item_artifacts').select('qualification_item_id,artifact_id,artifacts(id,title,visibility,status)'),
+    supabase.from('client_response_requests').select('id,qualification_item_id,status,created_at').eq('project_id', projectId).not('qualification_item_id', 'is', null).order('created_at', { ascending: false }),
     supabase.from('artifacts').select('id,title,visibility,status,origin,approved_at,created_at,artifact_versions(id,version_number,file_name,mime_type,byte_size,uploaded_at,superseded_at)').eq('project_id', projectId).order('created_at', { ascending: false }),
     supabase.from('artifact_access_grants').select('artifact_id,user_id,can_view,can_upload_version,can_comment,can_approve,can_manage'),
     supabase.from('project_asset_items').select('id,stable_key,status,internal_note,metadata,updated_at').eq('project_id', projectId).order('stable_key'),
@@ -63,7 +64,7 @@ export async function loadProjectSections(projectId, organisationId = null) {
     organisationId ? supabase.from('organisation_memberships').select('user_id,role').eq('organisation_id', organisationId) : Promise.resolve({ data: [], error: null }),
     supabase.from('user_profiles').select('user_id,display_name,email'),
   ]);
-  const error = qualificationResult.error || qualificationArtifactsResult.error || artifactsResult.error || artifactGrantsResult.error || assetsResult.error || deliverablesResult.error || trainingResult.error || cyclesResult.error || auditResult.error || projectMembersResult.error || organisationMembersResult.error || profilesResult.error;
+  const error = qualificationResult.error || qualificationArtifactsResult.error || qualificationApprovalsResult.error || artifactsResult.error || artifactGrantsResult.error || assetsResult.error || deliverablesResult.error || trainingResult.error || cyclesResult.error || auditResult.error || projectMembersResult.error || organisationMembersResult.error || profilesResult.error;
   if (error) throw new Error(error.message);
   const cycleIds = new Set((cyclesResult.data || []).map(cycle => cycle.id));
   const [workItemsResult, timeEntriesResult] = cycleIds.size ? await Promise.all([
@@ -74,6 +75,7 @@ export async function loadProjectSections(projectId, organisationId = null) {
   return {
     qualification: qualificationResult.data || [],
     qualificationArtifacts: (qualificationArtifactsResult.data || []).filter(link => (qualificationResult.data || []).some(item => item.id === link.qualification_item_id)),
+    qualificationApprovals: qualificationApprovalsResult.data || [],
     artifacts: artifactsResult.data || [],
     artifactGrants: artifactGrantsResult.data || [],
     assets: assetsResult.data || [],
@@ -130,3 +132,6 @@ export const closeOperatingCycle = ({ cycleId }) => callMutation('close_operatin
 export const addCycleWorkItem = ({ cycleId, title, estimatedHours }) => callMutation('add_cycle_work_item', { p_cycle: cycleId, p_title: title, p_estimated_hours: estimatedHours || null });
 export const addCycleTimeEntry = ({ cycleId, hours, category, note, occurredOn }) => callMutation('add_cycle_time_entry', { p_cycle: cycleId, p_hours: hours, p_category: category, p_note: note || null, p_occurred_on: occurredOn || null });
 export const createClientResponseRequest = ({ projectId, taskId, title, instructions, requestType, dueOn, requiresArtifact, requiresSignedArtifact, approvalSubject, approvalVersion, artifactIds = [] }) => callMutation('create_client_response_request', { p_project: projectId, p_task: taskId || null, p_title: title, p_instructions: instructions || '', p_request_type: requestType, p_due_on: dueOn || null, p_requires_artifact: requiresArtifact, p_requires_signed_artifact: requiresSignedArtifact, p_approval_subject: approvalSubject || null, p_approval_version: approvalVersion || null, p_artifact_ids: artifactIds });
+export const setQualificationApprovalPriority = ({ itemId, priority }) => callMutation('set_qualification_approval_priority', { p_item: itemId, p_priority: priority });
+export const requestQualificationApproval = ({ itemId, title, clientNote, dueOn, requiresSignedArtifact, artifactIds = [] }) => callMutation('request_qualification_approval', { p_item: itemId, p_title: title, p_client_note: clientNote || '', p_due_on: dueOn || null, p_requires_signed_artifact: requiresSignedArtifact, p_artifact_ids: artifactIds });
+export const requestQualificationApprovalGroup = ({ projectId, title, clientNote, itemIds, dueOn, requiresSignedArtifact, artifactIds = [] }) => callMutation('request_qualification_approval_group', { p_project: projectId, p_title: title, p_client_note: clientNote || '', p_item_ids: itemIds, p_due_on: dueOn || null, p_requires_signed_artifact: requiresSignedArtifact, p_artifact_ids: artifactIds });

@@ -25,6 +25,9 @@ function trainingName(row, project) {
   const known = { gbp: 'Google Business Profile', hubspot: 'HubSpot customer relationship management', 'website-cms': 'Website content management system', website_cms: 'Website content management system' };
   return entry?.name || known[row.stable_key] || pretty(row.stable_key);
 }
+function qualificationName(stableKey, project) {
+  return (version(project)?.definition?.qualification || []).find(item => item.id === stableKey)?.label || pretty(stableKey);
+}
 function requestLabel(request) {
   if (request.status === 'open') return 'Client response required';
   if (request.status === 'responded') return 'Response sent to Laminar';
@@ -101,7 +104,7 @@ async function download(artifactId) {
 async function loadDetail() {
   const { data: project, error } = await supabase.from('projects').select('id,name,client_name,status,playbook_versions(definition,playbooks(name))').eq('id', projectId).maybeSingle();
   if (error || !project) return setStatus(error?.message || 'This project is not available to you.');
-  const [tasksResult, requestsResult, deliverablesResult, artifactsResult, trainingResult, membersResult, notificationsResult] = await Promise.all([
+  const [tasksResult, requestsResult, deliverablesResult, artifactsResult, trainingResult, membersResult, notificationsResult, approvalGroupsResult] = await Promise.all([
     supabase.from('project_tasks').select('id,title,stage,due_on,playbook_phases(id,position,label,title),playbook_task_templates(guidance),task_notes(visibility,body)').eq('project_id', projectId).order('sort_rank'),
     supabase.from('client_response_requests').select('id,project_id,task_id,title,instructions,request_type,status,due_on,requires_artifact,requires_signed_artifact,approval_subject,approval_version,created_at,client_response_messages(id,body,created_by,created_at),client_response_artifacts(artifact_id,artifacts(id,title))').eq('project_id', projectId).order('created_at'),
     supabase.from('deliverables').select('id,title,status,approved_at').eq('project_id', projectId).order('title'),
@@ -109,8 +112,9 @@ async function loadDetail() {
     supabase.from('training_records').select('id,stable_key,status,signed_off_at').eq('project_id', projectId).eq('status', 'complete').order('stable_key'),
     supabase.from('project_members').select('user_id,role').eq('project_id', projectId),
     supabase.from('user_notifications').select('id,title,body,created_at').eq('project_id', projectId).is('read_at', null).order('created_at', { ascending: false }),
+    supabase.from('qualification_approval_groups').select('id,request_id,qualification_approval_group_items(qualification_item_id,stable_key,requires_individual_approval,position)').eq('project_id', projectId),
   ]);
-  const failed = [tasksResult, requestsResult, deliverablesResult, artifactsResult, trainingResult, membersResult, notificationsResult].find(result => result.error);
+  const failed = [tasksResult, requestsResult, deliverablesResult, artifactsResult, trainingResult, membersResult, notificationsResult, approvalGroupsResult].find(result => result.error);
   if (failed) return setStatus(failed.error.message);
   const { data: sessionData } = await supabase.auth.getSession();
   const isClientAdmin = (membersResult.data || []).some(member => member.user_id === sessionData.session?.user.id && member.role === 'client_admin');
@@ -122,11 +126,16 @@ async function loadDetail() {
     grouped.get(phase.id).tasks.push(task);
   }
   const taskIds = new Set(tasks.map(task => task.id));
-  const projectRequests = requests.filter(request => !request.task_id || !taskIds.has(request.task_id));
+  const approvalGroups = approvalGroupsResult.data || [];
+  const groupedItemIds = new Set(approvalGroups.flatMap(group => (group.qualification_approval_group_items || []).filter(item => item.requires_individual_approval).map(item => item.qualification_item_id)));
+  const groupRequestIds = new Set(approvalGroups.map(group => group.request_id));
+  const projectRequests = requests.filter(request => (!request.task_id || !taskIds.has(request.task_id)) && !groupRequestIds.has(request.id) && !groupedItemIds.has(request.qualification_item_id));
+  const requestById = new Map(requests.map(request => [request.id, request]));
   title.textContent = project.name; intro.textContent = `${playbook(project)?.name || 'Laminar project'} · client workspace.`;
   list.hidden = true; detail.hidden = false;
   detail.innerHTML = `<a class="project-back" href="client.html">‹ All client projects</a>
     ${notifications.length ? `<section class="project-workspace-panel client-response-panel"><div class="section-label">New client requests</div><div class="client-notification-list">${notifications.map(note => `<article><strong>${esc(note.title)}</strong>${note.body ? `<p>${esc(note.body)}</p>` : ''}</article>`).join('')}</div></section>` : ''}
+    ${approvalGroups.length ? `<section class="project-workspace-panel client-response-panel"><div class="section-label">Approval packages</div><p class="project-data-note">Approve the package after every required priority approval is complete.</p>${approvalGroups.map(group => { const parent = requestById.get(group.request_id); const items = (group.qualification_approval_group_items || []).sort((a,b) => a.position - b.position); return parent ? `<article class="client-approval-package"><div class="client-approval-package-items">${items.map(item => { const individual = requests.find(request => request.qualification_item_id === item.qualification_item_id); const complete = individual?.status === 'approved'; const state = item.requires_individual_approval ? (complete ? '<span class="stage-pill stage-complete">Priority approved</span>' : '<span class="client-priority-pending">Priority approval required</span>') : '<span class="workspace-status">Included in package</span>'; return `<div>${state}<strong>${esc(qualificationName(item.stable_key, project))}</strong>${item.requires_individual_approval && individual && !complete ? requestHtml(individual, isClientAdmin) : ''}</div>`; }).join('')}</div>${requestHtml(parent, isClientAdmin)}</article>` : ''; }).join('')}</section>` : ''}
     ${projectRequests.length ? `<section class="project-workspace-panel client-response-panel"><div class="section-label">Client response required</div><p class="project-data-note">These requests need your input. Your notes, documents, completion, and approvals are recorded for both your team and Laminar.</p>${projectRequests.map(request => requestHtml(request, isClientAdmin)).join('')}</section>` : ''}
     <section class="project-workspace-panel"><div class="section-label">Project phases</div><p class="project-data-note">Expand a phase to see the client-facing steps, Laminar notes, and anything that needs a response from you.</p><div class="client-phase-list">${[...grouped.values()].sort((a,b) => (a.phase.position || 0) - (b.phase.position || 0)).map(({ phase, tasks: phaseTasks }) => { const open = phaseTasks.some(task => requests.some(request => request.task_id === task.id && request.status === 'open')); const complete = phaseTasks.filter(task => ['complete', 'delivered'].includes(task.stage)).length; return `<details class="client-phase" ${open ? 'open' : ''}><summary><span>${esc(phase.label || `Phase ${phase.position || ''}`)}</span><strong>${esc(phase.title || 'Project phase')}</strong><small>${complete}/${phaseTasks.length} complete</small></summary><div class="client-phase-body">${phaseTasks.map(task => taskHtml(task, requests, isClientAdmin)).join('')}</div></details>`; }).join('') || '<p class="projects-empty">No client-facing steps have been shared yet.</p>'}</div></section>
     <div class="client-detail-grid"><section class="project-workspace-panel"><div class="section-label">Deliverables</div><div class="client-deliverable-list">${(deliverablesResult.data || []).length ? (deliverablesResult.data || []).map(row => `<article class="client-deliverable"><div><strong>${esc(row.title)}</strong><p>${esc(row.status === 'approved' ? 'Approved' : 'Ready for your approval')}</p></div>${row.status === 'delivered' ? `<button class="btn btn-primary btn-sm" data-deliverable-approve="${esc(row.id)}">Approve deliverable</button>` : '<span class="stage-pill stage-complete">Approved</span>'}</article>`).join('') : '<p class="projects-empty">No deliverables have been shared yet.</p>'}</div></section>

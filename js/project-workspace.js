@@ -2,7 +2,7 @@ import { supabase } from './supabase-client.js';
 import { artifactDownloadUrl, publishClientArtifactCopy, uploadProjectArtifact } from './artifact-repository.js';
 import { ICONS, autoResize } from './ui.js';
 import { COUNTABLE_STAGES, DONE_STAGES, getValidTransitions, isRescope, STAGE_META, stageFromDatabase } from './stages.js';
-import { addCycleTimeEntry, addCycleWorkItem, assignProjectMember, attachQualificationArtifact, closeOperatingCycle, createClientResponseRequest, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, removeArtifactUserAccess, removeProjectMember, saveTaskNote, setArtifactUserAccess, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
+import { addCycleTimeEntry, addCycleWorkItem, assignProjectMember, attachQualificationArtifact, closeOperatingCycle, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, removeArtifactUserAccess, removeProjectMember, requestQualificationApproval, requestQualificationApprovalGroup, saveTaskNote, setArtifactUserAccess, setQualificationApprovalPriority, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
 
 const projectId = new URLSearchParams(location.search).get('id');
 const projectName = document.querySelector('#projectName');
@@ -33,6 +33,7 @@ let activeView = ['overview', 'phases', 'assets', 'artifacts', 'deliverables', '
 let openStageTaskId = null;
 let openNoteTaskId = null;
 let pendingRescope = null;
+let openQualificationApprovalId = null;
 
 function esc(value) { return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]); }
 function setStatus(value = '') { status.textContent = value; }
@@ -67,6 +68,29 @@ function memberName(userId) { const profile = sections?.profiles.find(item => it
 function memberEmail(userId) { return sections?.profiles.find(item => item.user_id === userId)?.email || ''; }
 function memberRoleLabel(role) { return String(role || '').replaceAll('_', ' '); }
 
+function qualificationApprovalState(itemId) {
+  return sections.qualificationApprovals.find(request => request.qualification_item_id === itemId)?.status || null;
+}
+
+function qualificationRecordHtml(definitionItem, row, linked, availableDocuments, clientDocuments) {
+  if (!row) return `<article class="qualification-record"><div class="project-check-row"><span>○</span>${esc(definitionItem.label)}</div></article>`;
+  const approvalStatus = qualificationApprovalState(row.id);
+  const approvalLabel = approvalStatus === 'approved' ? 'Client approved' : approvalStatus === 'open' ? 'Client response required' : approvalStatus ? displayStatus(approvalStatus) : 'Not requested';
+  const approvalOpen = openQualificationApprovalId === row.id;
+  return `<article class="qualification-record${row.complete ? ' complete' : ''}">
+    <label class="project-check-row"><input type="checkbox" data-action="qualification-update" data-item-id="${esc(row.id)}" ${row.complete ? 'checked' : ''}><span>${row.complete ? '✓' : '○'}</span>${esc(definitionItem.label)}</label>
+    <div class="qualification-approval-bar"><span class="qualification-approval-status${approvalStatus ? ` is-${esc(approvalStatus)}` : ''}">${esc(approvalLabel)}</span><label class="qualification-priority-toggle"><input type="checkbox" data-action="qualification-approval-priority" data-item-id="${esc(row.id)}" ${row.client_approval_priority ? 'checked' : ''}> Priority approval required</label><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-approval-toggle" data-item-id="${esc(row.id)}">Request client approval</button></div>
+    ${approvalOpen ? `<form class="qualification-approval-form" data-action="qualification-approval-request" data-item-id="${esc(row.id)}" data-title="${esc(definitionItem.label)}"><textarea name="clientNote" rows="2" maxlength="6000" placeholder="Client-facing approval note. Internal rationale above remains private."></textarea><label>Attach client documents <select name="artifactIds" multiple size="${Math.min(Math.max(clientDocuments.length, 2), 4)}" ${clientDocuments.length ? '' : 'disabled'}>${clientDocuments.length ? clientDocuments.map(doc => `<option value="${esc(doc.id)}">${esc(doc.title)}</option>`).join('') : '<option>No approved client documents available</option>'}</select></label><label><input name="requiresSigned" type="checkbox"> Require signed document before approval</label><button class="btn btn-primary btn-sm" type="submit">Send approval request</button></form>` : ''}
+    <textarea class="qualification-note" rows="2" data-qualification-note="${esc(row.id)}" placeholder="Internal rationale, decision context, or follow-up…">${esc(row.internal_note || '')}</textarea>
+    <div class="qualification-evidence"><strong>Supporting documents</strong>${linked.length ? `<ul>${linked.filter(Boolean).map(doc => `<li>${esc(doc.title || 'Project document')} <button type="button" class="text-button" data-action="qualification-document-detach" data-item-id="${esc(row.id)}" data-artifact-id="${esc(doc.id)}">Remove</button></li>`).join('')}</ul>` : '<p>No supporting documents attached.</p>'}<div class="qualification-document-actions"><select data-qualification-document="${esc(row.id)}"><option value="">${availableDocuments.length ? 'Attach a project document…' : 'No uploaded project documents yet'}</option>${availableDocuments.filter(doc => !linked.some(attached => attached?.id === doc.id)).map(doc => `<option value="${esc(doc.id)}">${esc(doc.title)} · ${esc(doc.visibility)}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-document-attach" data-item-id="${esc(row.id)}" ${availableDocuments.length ? '' : 'disabled'}>Attach document</button><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-note-save" data-item-id="${esc(row.id)}">Save note</button></div></div>
+  </article>`;
+}
+
+function groupApprovalForm(qualificationDefs, qualification, clientDocuments) {
+  const rows = qualificationDefs.map(item => ({ definition: item, row: qualification.get(item.id) })).filter(item => item.row);
+  return `<details class="qualification-group-approval"><summary>Request group approval</summary><form data-action="qualification-group-approval-request"><input name="title" maxlength="220" required placeholder="Approval package title"><textarea name="clientNote" rows="2" maxlength="6000" placeholder="Client-facing approval note and review instructions"></textarea><label>Attach client documents <select name="artifactIds" multiple size="${Math.min(Math.max(clientDocuments.length, 2), 4)}" ${clientDocuments.length ? '' : 'disabled'}>${clientDocuments.length ? clientDocuments.map(doc => `<option value="${esc(doc.id)}">${esc(doc.title)}</option>`).join('') : '<option>No approved client documents available</option>'}</select></label><div class="qualification-group-options">${rows.map(({ definition: item, row }) => `<label><input name="itemIds" type="checkbox" value="${esc(row.id)}"> ${esc(item.label)}${row.client_approval_priority ? ' · priority approval required' : ''}</label>`).join('')}</div><button class="btn btn-primary btn-sm" type="submit">Send group approval request</button></form></details>`;
+}
+
 function showView(view, updateHash = false) {
   activeView = sectionViews[view] ? view : 'overview';
   for (const [name, section] of Object.entries(sectionViews)) section.classList.toggle('active', name === activeView);
@@ -92,6 +116,7 @@ function renderSectionData(project, tasks) {
     qualificationLinks.get(link.qualification_item_id).push(Array.isArray(link.artifacts) ? link.artifacts[0] : link.artifacts);
   }
   const availableDocuments = sections.artifacts.filter(item => item.status === 'available');
+  const clientDocuments = sections.artifacts.filter(item => item.status === 'available' && (item.visibility === 'client_upload' || (item.visibility === 'client' && item.approved_at)));
   sectionViews.overview.innerHTML = `
     <div class="project-section-grid">
       <article class="project-data-card"><span>Delivery progress</span><strong>${done} / ${countable.length}</strong><p>Countable playbook tasks complete.</p></article>
@@ -99,7 +124,7 @@ function renderSectionData(project, tasks) {
       <article class="project-data-card"><span>Assets</span><strong>${sections.assets.filter(item => item.status === 'received').length} / ${sections.assets.length}</strong><p>Required and supporting inputs received.</p></article>
       <article class="project-data-card"><span>Deliverables</span><strong>${sections.deliverables.filter(item => item.status === 'approved').length} / ${sections.deliverables.length}</strong><p>Approved deliverables.</p></article>
     </div>
-    <section class="project-data-panel"><div class="section-label">Qualification</div><p class="project-data-note">Record the decision rationale and attach supporting project documents to each qualification item.</p>${qualificationDefs.length ? `<div class="qualification-record-list">${qualificationDefs.map(item => { const row = qualification.get(item.id); const linked = row ? qualificationLinks.get(row.id) || [] : []; return `<article class="qualification-record${row?.complete ? ' complete' : ''}"><label class="project-check-row"><input type="checkbox" data-action="qualification-update" data-item-id="${esc(row?.id || '')}" ${row?.complete ? 'checked' : ''} ${row ? '' : 'disabled'}><span>${row?.complete ? '✓' : '○'}</span>${esc(item.label)}</label>${row ? `<textarea class="qualification-note" rows="2" data-qualification-note="${esc(row.id)}" placeholder="Internal rationale, decision context, or follow-up…">${esc(row.internal_note || '')}</textarea><div class="qualification-evidence"><strong>Supporting documents</strong>${linked.length ? `<ul>${linked.filter(Boolean).map(doc => `<li>${esc(doc.title || 'Project document')} <button type="button" class="text-button" data-action="qualification-document-detach" data-item-id="${esc(row.id)}" data-artifact-id="${esc(doc.id)}">Remove</button></li>`).join('')}</ul>` : '<p>No supporting documents attached.</p>'}<div class="qualification-document-actions"><select data-qualification-document="${esc(row.id)}"><option value="">${availableDocuments.length ? 'Attach a project document…' : 'No uploaded project documents yet'}</option>${availableDocuments.filter(doc => !linked.some(attached => attached?.id === doc.id)).map(doc => `<option value="${esc(doc.id)}">${esc(doc.title)} · ${esc(doc.visibility)}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-document-attach" data-item-id="${esc(row.id)}" ${availableDocuments.length ? '' : 'disabled'}>Attach document</button><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-note-save" data-item-id="${esc(row.id)}">Save note</button></div></div>` : ''}</article>`; }).join('')}</div>` : emptyState('No qualification items were defined for this playbook.')}</section>`;
+    <section class="project-data-panel"><div class="section-label">Qualification</div><p class="project-data-note">Keep the internal rationale and supporting documents here. Client approvals are requested deliberately for an individual qualification or an approval package.</p>${sections.canManage ? groupApprovalForm(qualificationDefs, qualification, clientDocuments) : ''}${qualificationDefs.length ? `<div class="qualification-record-list">${qualificationDefs.map(item => qualificationRecordHtml(item, qualification.get(item.id), qualification.get(item.id) ? qualificationLinks.get(qualification.get(item.id).id) || [] : [], availableDocuments, clientDocuments)).join('')}</div>` : emptyState('No qualification items were defined for this playbook.')}</section>`;
 
   sectionViews.assets.innerHTML = sections.assets.length ? `<div class="asset-grid">${sections.assets.map(item => {
     const def = definitionByKey(project, 'assets', item.stable_key);
@@ -131,10 +156,8 @@ function renderSectionData(project, tasks) {
 
   const assigned = new Set(sections.projectMembers.map(member => member.user_id));
   const availableMembers = sections.organisationMembers.filter(member => !assigned.has(member.user_id));
-  const clientRequestDocuments = sections.artifacts.filter(artifact => artifact.status === 'available' && (artifact.visibility === 'client_upload' || (artifact.visibility === 'client' && artifact.approved_at)));
   const projectAccess = sections.canManage ? `<section class="project-data-panel project-members-panel"><div class="section-label">Project access</div><p class="project-data-note">Project members have the role assigned to them in this organisation. Organisation owners and delivery managers already have project-management access.</p><form class="project-member-form" data-action="project-member-add"><select name="userId"><option value="">Add an organisation member…</option>${availableMembers.map(member => `<option value="${esc(member.user_id)}">${esc(memberName(member.user_id))} · ${esc(memberRoleLabel(member.role))}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" type="submit" ${availableMembers.length ? '' : 'disabled'}>Add to project</button></form><div class="project-member-list">${sections.projectMembers.length ? sections.projectMembers.map(member => `<div><p><strong>${esc(memberName(member.user_id))}</strong><small>${esc(memberEmail(member.user_id))} · ${esc(memberRoleLabel(member.role))}</small></p><button class="btn btn-ghost btn-sm" type="button" data-action="project-member-remove" data-user-id="${esc(member.user_id)}">Remove</button></div>`).join('') : '<p class="project-data-note">No additional project members assigned.</p>'}</div></section>` : '';
-  const clientRequests = sections.canManage ? `<section class="project-data-panel"><div class="section-label">Request client response</div><p class="project-data-note">Creates a client-facing response loop without changing the internal delivery stage. Attach only approved client-visible documents; the client will see exactly these documents with the request.</p><form class="client-request-create-form" data-action="client-response-request"><label>Related delivery step <select name="taskId"><option value="">Project-level request</option>${tasks.filter(task => task.template?.client_action).map(task => `<option value="${esc(task.id)}">${esc(task.title)}</option>`).join('')}</select></label><label>Request type <select name="requestType"><option value="information">Information or decision</option><option value="materials">Document or materials</option><option value="review">Review</option><option value="approval">Formal approval</option></select></label><label>Title <input name="title" maxlength="220" required placeholder="What does the client need to provide or approve?"></label><label>Instructions <textarea name="instructions" rows="3" maxlength="6000" placeholder="Plain-language context, required response, and any acceptance criteria."></textarea></label><label>Attached client documents <select name="artifactIds" multiple size="${Math.min(Math.max(clientRequestDocuments.length, 2), 5)}" ${clientRequestDocuments.length ? '' : 'disabled'}>${clientRequestDocuments.length ? clientRequestDocuments.map(artifact => `<option value="${esc(artifact.id)}">${esc(artifact.title)}</option>`).join('') : '<option>No approved client documents available</option>'}</select></label><div class="client-request-create-grid"><label>Due date <input name="dueOn" type="date"></label><label>Approval subject <input name="approvalSubject" maxlength="220" placeholder="Required for formal approval"></label><label>Version / reference <input name="approvalVersion" maxlength="120" placeholder="e.g. Scope v2.1"></label></div><label><input name="requiresArtifact" type="checkbox"> Require a document or image upload before completion</label><label><input name="requiresSignedArtifact" type="checkbox"> Require a signed document before formal approval</label><button class="btn btn-primary btn-sm" type="submit">Send client request</button></form></section>` : '';
-  sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Pinned playbook</dt><dd>${esc(playbookName(project))} · version ${esc(workspace.version?.version_number || '—')}</dd></div><div><dt>Last updated</dt><dd>${project.updated_at ? esc(new Date(project.updated_at).toLocaleString()) : 'Not recorded'}</dd></div></dl></section>${projectAccess}${clientRequests}<section class="project-data-panel project-activity"><div class="section-label">Recent audit activity</div>${sections.audit.length ? `<div class="project-activity-list">${sections.audit.slice(0, 8).map(event => { const description = auditDescription(event, qualificationDefs, sections.qualification); return `<div><p><strong>${esc(description.title)}</strong>${description.detail ? `<small>${esc(description.detail)}</small>` : ''}</p><span>${esc(new Date(event.occurred_at).toLocaleString())}</span></div>`; }).join('')}</div>` : emptyState('No audit activity is visible yet.')}</section>`;
+  sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Pinned playbook</dt><dd>${esc(playbookName(project))} · version ${esc(workspace.version?.version_number || '—')}</dd></div><div><dt>Last updated</dt><dd>${project.updated_at ? esc(new Date(project.updated_at).toLocaleString()) : 'Not recorded'}</dd></div></dl></section>${projectAccess}<section class="project-data-panel project-activity"><div class="section-label">Recent audit activity</div>${sections.audit.length ? `<div class="project-activity-list">${sections.audit.slice(0, 8).map(event => { const description = auditDescription(event, qualificationDefs, sections.qualification); return `<div><p><strong>${esc(description.title)}</strong>${description.detail ? `<small>${esc(description.detail)}</small>` : ''}</p><span>${esc(new Date(event.occurred_at).toLocaleString())}</span></div>`; }).join('')}</div>` : emptyState('No audit activity is visible yet.')}</section>`;
 }
 
 function render(project, tasks) {
@@ -275,6 +298,11 @@ async function persistSection(action) {
 }
 
 sectionViews.overview.addEventListener('change', event => {
+  const priority = event.target.closest('[data-action="qualification-approval-priority"]');
+  if (priority?.dataset.itemId) {
+    void persistSection(() => setQualificationApprovalPriority({ itemId: priority.dataset.itemId, priority: priority.checked }));
+    return;
+  }
   const input = event.target.closest('[data-action="qualification-update"]');
   if (!input?.dataset.itemId) return;
   const record = input.closest('.qualification-record');
@@ -297,6 +325,28 @@ sectionViews.overview.addEventListener('click', event => {
     void persistSection(() => attachQualificationArtifact({ itemId, artifactId }));
   }
   if (button.dataset.action === 'qualification-document-detach' && button.dataset.artifactId) void persistSection(() => detachQualificationArtifact({ itemId, artifactId: button.dataset.artifactId }));
+  if (button.dataset.action === 'qualification-approval-toggle') {
+    openQualificationApprovalId = openQualificationApprovalId === itemId ? null : itemId;
+    render(workspace.project, workspace.tasks);
+  }
+});
+sectionViews.overview.addEventListener('submit', event => {
+  const form = event.target.closest('form[data-action]');
+  if (!form || !workspace) return;
+  event.preventDefault();
+  const data = new FormData(form);
+  if (form.dataset.action === 'qualification-approval-request') {
+    const itemId = form.dataset.itemId;
+    const itemTitle = form.dataset.title || 'Qualification item';
+    openQualificationApprovalId = null;
+    void persistSection(() => requestQualificationApproval({ itemId, title: `Approval requested: ${itemTitle}`, clientNote: String(data.get('clientNote') || '').trim(), requiresSignedArtifact: data.get('requiresSigned') === 'on', artifactIds: data.getAll('artifactIds').map(String) }));
+    return;
+  }
+  if (form.dataset.action === 'qualification-group-approval-request') {
+    const itemIds = data.getAll('itemIds').map(String);
+    if (!itemIds.length) { setStatus('Choose at least one qualification item for the approval package.'); return; }
+    void persistSection(() => requestQualificationApprovalGroup({ projectId: workspace.project.id, title: String(data.get('title') || '').trim(), clientNote: String(data.get('clientNote') || '').trim(), itemIds, artifactIds: data.getAll('artifactIds').map(String) }));
+  }
 });
 sectionViews.assets.addEventListener('click', event => {
   const button = event.target.closest('[data-action="asset-save"]');
@@ -405,14 +455,6 @@ sectionViews.details.addEventListener('submit', event => {
   const form = event.target.closest('form[data-action]');
   if (!form || !workspace) return;
   event.preventDefault();
-  if (form.dataset.action === 'client-response-request') {
-    const data = new FormData(form);
-    const requestType = String(data.get('requestType') || 'information');
-    const approvalSubject = String(data.get('approvalSubject') || '').trim();
-    if (requestType === 'approval' && !approvalSubject) { setStatus('A formal approval needs an approval subject.'); return; }
-    void persistSection(() => createClientResponseRequest({ projectId: workspace.project.id, taskId: String(data.get('taskId') || ''), title: String(data.get('title') || '').trim(), instructions: String(data.get('instructions') || '').trim(), requestType, dueOn: String(data.get('dueOn') || ''), requiresArtifact: data.get('requiresArtifact') === 'on', requiresSignedArtifact: data.get('requiresSignedArtifact') === 'on', approvalSubject, approvalVersion: String(data.get('approvalVersion') || '').trim(), artifactIds: data.getAll('artifactIds').map(String) }));
-    return;
-  }
   if (form.dataset.action !== 'project-member-add') return;
   const userId = new FormData(form).get('userId');
   if (!userId) { setStatus('Choose an organisation member first.'); return; }
