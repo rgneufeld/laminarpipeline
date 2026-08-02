@@ -2,7 +2,7 @@ import { supabase } from './supabase-client.js';
 import { artifactDownloadUrl, publishClientArtifactCopy, uploadProjectArtifact } from './artifact-repository.js';
 import { ICONS, autoResize } from './ui.js';
 import { COUNTABLE_STAGES, DONE_STAGES, getValidTransitions, isRescope, STAGE_META, stageFromDatabase } from './stages.js';
-import { addCycleTimeEntry, addCycleWorkItem, attachQualificationArtifact, closeOperatingCycle, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
+import { addCycleTimeEntry, addCycleWorkItem, assignProjectMember, attachQualificationArtifact, closeOperatingCycle, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, removeProjectMember, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
 
 const projectId = new URLSearchParams(location.search).get('id');
 const projectName = document.querySelector('#projectName');
@@ -57,6 +57,9 @@ function auditDescription(event, qualificationDefs, qualificationRows) {
   if (event.event_type === 'artifact.client_copy_published') return { title: 'Client document published', detail: 'Approved client copy created' };
   return { title: String(event.event_type || 'Project activity').replaceAll('.', ' '), detail: '' };
 }
+function memberName(userId) { const profile = sections?.profiles.find(item => item.user_id === userId); return profile?.display_name || profile?.email || 'Organisation member'; }
+function memberEmail(userId) { return sections?.profiles.find(item => item.user_id === userId)?.email || ''; }
+function memberRoleLabel(role) { return String(role || '').replaceAll('_', ' '); }
 
 function showView(view, updateHash = false) {
   activeView = sectionViews[view] ? view : 'overview';
@@ -118,7 +121,10 @@ function renderSectionData(project, tasks) {
     return `<article class="cycle-header-card"><div class="cycle-header-top"><div><div class="cycle-header-period">${esc(String(cycle.period).slice(0, 7))}</div><p class="project-data-note">${workItems.length} work item${workItems.length === 1 ? '' : 's'} · ${hours.toFixed(1)} recorded hours</p></div><span class="stage-pill stage-${esc(closed ? 'complete' : 'active')}">${esc(displayStatus(cycle.status))}</span></div><div class="cycle-detail-grid"><div><strong>Work items</strong>${workItems.length ? `<ul>${workItems.map(item => `<li>${esc(item.title)}${item.estimated_hours ? ` · ${esc(item.estimated_hours)}h planned` : ''}</li>`).join('')}</ul>` : '<p class="project-data-note">No work items yet.</p>'}</div><div><strong>Time entries</strong>${timeEntries.length ? `<ul>${timeEntries.map(entry => `<li>${esc(entry.category)} · ${esc(entry.hours)}h</li>`).join('')}</ul>` : '<p class="project-data-note">No time entries yet.</p>'}</div></div>${closed ? '' : `<form class="cycle-inline-form" data-action="cycle-work-item" data-cycle-id="${esc(cycle.id)}"><input name="title" placeholder="Add scoped work item" required><input name="hours" type="number" min="0" step="0.25" placeholder="Est. hours"><button class="btn btn-ghost btn-sm" type="submit">Add work</button></form><form class="cycle-inline-form" data-action="cycle-time-entry" data-cycle-id="${esc(cycle.id)}"><input name="hours" type="number" min="0.25" step="0.25" placeholder="Hours" required><input name="category" placeholder="Category" required><input name="note" placeholder="Note (optional)"><button class="btn btn-ghost btn-sm" type="submit">Log time</button></form><button class="btn btn-ghost btn-sm cycle-close" type="button" data-action="cycle-close" data-cycle-id="${esc(cycle.id)}">Close cycle</button>`}</article>`;
   }).join('')}</div>` : emptyState('No operating cycles have been opened for this project.')}`;
 
-  sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Pinned playbook</dt><dd>${esc(playbookName(project))} · version ${esc(workspace.version?.version_number || '—')}</dd></div><div><dt>Last updated</dt><dd>${project.updated_at ? esc(new Date(project.updated_at).toLocaleString()) : 'Not recorded'}</dd></div></dl></section><section class="project-data-panel project-activity"><div class="section-label">Recent audit activity</div>${sections.audit.length ? `<div class="project-activity-list">${sections.audit.slice(0, 8).map(event => { const description = auditDescription(event, qualificationDefs, sections.qualification); return `<div><p><strong>${esc(description.title)}</strong>${description.detail ? `<small>${esc(description.detail)}</small>` : ''}</p><span>${esc(new Date(event.occurred_at).toLocaleString())}</span></div>`; }).join('')}</div>` : emptyState('No audit activity is visible yet.')}</section>`;
+  const assigned = new Set(sections.projectMembers.map(member => member.user_id));
+  const availableMembers = sections.organisationMembers.filter(member => !assigned.has(member.user_id));
+  const projectAccess = sections.canManage ? `<section class="project-data-panel project-members-panel"><div class="section-label">Project access</div><p class="project-data-note">Project members have the role assigned to them in this organisation. Organisation owners and delivery managers already have project-management access.</p><form class="project-member-form" data-action="project-member-add"><select name="userId"><option value="">Add an organisation member…</option>${availableMembers.map(member => `<option value="${esc(member.user_id)}">${esc(memberName(member.user_id))} · ${esc(memberRoleLabel(member.role))}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" type="submit" ${availableMembers.length ? '' : 'disabled'}>Add to project</button></form><div class="project-member-list">${sections.projectMembers.length ? sections.projectMembers.map(member => `<div><p><strong>${esc(memberName(member.user_id))}</strong><small>${esc(memberEmail(member.user_id))} · ${esc(memberRoleLabel(member.role))}</small></p><button class="btn btn-ghost btn-sm" type="button" data-action="project-member-remove" data-user-id="${esc(member.user_id)}">Remove</button></div>`).join('') : '<p class="project-data-note">No additional project members assigned.</p>'}</div></section>` : '';
+  sectionViews.details.innerHTML = `<section class="project-data-panel"><div class="section-label">Project record</div><dl class="project-detail-list"><div><dt>Client</dt><dd>${esc(project.client_name || 'Not recorded')}</dd></div><div><dt>Project status</dt><dd>${esc(project.status)}</dd></div><div><dt>Pinned playbook</dt><dd>${esc(playbookName(project))} · version ${esc(workspace.version?.version_number || '—')}</dd></div><div><dt>Last updated</dt><dd>${project.updated_at ? esc(new Date(project.updated_at).toLocaleString()) : 'Not recorded'}</dd></div></dl></section>${projectAccess}<section class="project-data-panel project-activity"><div class="section-label">Recent audit activity</div>${sections.audit.length ? `<div class="project-activity-list">${sections.audit.slice(0, 8).map(event => { const description = auditDescription(event, qualificationDefs, sections.qualification); return `<div><p><strong>${esc(description.title)}</strong>${description.detail ? `<small>${esc(description.detail)}</small>` : ''}</p><span>${esc(new Date(event.occurred_at).toLocaleString())}</span></div>`; }).join('')}</div>` : emptyState('No audit activity is visible yet.')}</section>`;
 }
 
 function render(project, tasks) {
@@ -180,13 +186,16 @@ async function loadProject() {
   if (!sessionData.session) return;
   setStatus('Loading project…');
   try {
-    const [loadedWorkspace, loadedSections] = await Promise.all([
-      loadProjectWorkspace(projectId),
-      loadProjectSections(projectId),
+    const loadedWorkspace = await loadProjectWorkspace(projectId);
+    if (!loadedWorkspace) { setStatus('This project is unavailable to your account.'); return; }
+    const [loadedSections, manageResult] = await Promise.all([
+      loadProjectSections(projectId, loadedWorkspace.project.organisation_id),
+      supabase.rpc('can_manage_org', { p_org: loadedWorkspace.project.organisation_id }),
     ]);
+    if (manageResult.error) throw new Error(manageResult.error.message);
+    loadedSections.canManage = manageResult.data === true;
     workspace = loadedWorkspace;
     sections = loadedSections;
-    if (!workspace) { setStatus('This project is unavailable to your account.'); return; }
     render(workspace.project, workspace.tasks);
     setStatus('Changes are saved to Supabase and recorded in the project audit history.');
   } catch (error) {
@@ -371,6 +380,19 @@ sectionViews.cycles.addEventListener('click', event => {
   if (!button?.dataset.cycleId) return;
   if (!confirm('Close this cycle? Its work and time history will remain visible but the period will no longer accept changes.')) return;
   void persistSection(() => closeOperatingCycle({ cycleId: button.dataset.cycleId }));
+});
+sectionViews.details.addEventListener('submit', event => {
+  const form = event.target.closest('form[data-action="project-member-add"]');
+  if (!form || !workspace) return;
+  event.preventDefault();
+  const userId = new FormData(form).get('userId');
+  if (!userId) { setStatus('Choose an organisation member first.'); return; }
+  void persistSection(() => assignProjectMember({ projectId: workspace.project.id, userId: String(userId) }));
+});
+sectionViews.details.addEventListener('click', event => {
+  const button = event.target.closest('[data-action="project-member-remove"]');
+  if (!button?.dataset.userId || !workspace || !confirm('Remove this member from this project?')) return;
+  void persistSection(() => removeProjectMember({ projectId: workspace.project.id, userId: button.dataset.userId }));
 });
 
 window.addEventListener('hashchange', () => showView(location.hash.slice(1)));
