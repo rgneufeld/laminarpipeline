@@ -985,6 +985,39 @@ select.app-select:focus { outline: 2px solid var(--accent); outline-offset: 2px;
 .client-action-options .btn, .client-deliverable .btn { padding: 6px 9px; font-size: 12px; }
 @media (max-width: 600px) { .client-action-row, .client-deliverable { align-items: flex-start; flex-direction: column; } .client-action-options { justify-content: flex-start; } }
 
+.client-response-panel { margin-bottom: 14px; }
+.client-phase-list { margin-top: 14px; display: grid; gap: 8px; }
+.client-phase { border: 1px solid var(--border); border-radius: 7px; background: var(--bg); overflow: hidden; }
+.client-phase > summary { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; gap: 12px; cursor: pointer; padding: 13px 15px; list-style: none; }
+.client-phase > summary::-webkit-details-marker { display: none; }
+.client-phase > summary span, .client-phase > summary small { color: var(--muted); font-size: 12px; }
+.client-phase > summary strong { color: var(--text); font-size: 14px; }
+.client-phase-body { border-top: 1px solid var(--border); }
+.client-phase-task { padding: 14px 15px; border-top: 1px solid var(--border); }
+.client-phase-task:first-child { border-top: 0; }
+.client-phase-task-title { display: flex; align-items: center; gap: 9px; }
+.client-phase-task-title strong { color: var(--text); font-size: 14px; }
+.client-phase-task > p { margin: 8px 0 0 0; color: var(--muted); font-size: 13px; }
+.client-facing-note { margin-top: 10px; padding: 9px 11px; background: var(--surface2); border-radius: 6px; color: var(--text); font-size: 13px; white-space: pre-wrap; }
+.client-facing-note span { display: block; color: var(--accent); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-bottom: 4px; }
+.client-request { margin-top: 12px; padding: 13px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.client-request-open { border-left: 3px solid var(--accent); }
+.client-request header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.client-request header strong { color: var(--text); font-size: 14px; }
+.client-request-status { color: var(--accent); background: rgba(75,142,255,.12); padding: 3px 6px; border-radius: 4px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.client-request-instructions, .client-request-approval, .client-request-due { margin: 9px 0 0; color: var(--muted); font-size: 13px; white-space: pre-wrap; }
+.client-request-approval { color: var(--text); }
+.client-request-messages { margin-top: 12px; }
+.client-request-message { padding: 8px 0; border-top: 1px solid var(--border); }
+.client-request-message span { color: var(--muted); font-size: 11px; }
+.client-request-message p { margin: 4px 0 0; color: var(--text); font-size: 13px; white-space: pre-wrap; }
+.client-request-files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.client-response-message-form, .client-response-upload-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 12px; }
+.client-response-message-form textarea { flex: 1 1 260px; min-height: 60px; resize: vertical; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 8px; font: inherit; }
+.client-response-upload-form input { max-width: 280px; color: var(--muted); font-size: 12px; }
+.client-request > .btn { margin-top: 12px; }
+@media (max-width: 600px) { .client-phase > summary { grid-template-columns: 1fr auto; } .client-phase > summary span { grid-column: 1 / -1; } }
+
 /* ── Time log ────────────────────────────────────────────────────────────────── */
 
 .cycle-time-add {
