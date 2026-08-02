@@ -49,10 +49,11 @@ export async function loadProjectWorkspace(projectId) {
 }
 
 export async function loadProjectSections(projectId, organisationId = null) {
-  const [qualificationResult, qualificationArtifactsResult, artifactsResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult, projectMembersResult, organisationMembersResult, profilesResult] = await Promise.all([
+  const [qualificationResult, qualificationArtifactsResult, artifactsResult, artifactGrantsResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult, projectMembersResult, organisationMembersResult, profilesResult] = await Promise.all([
     supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at,internal_note').eq('project_id', projectId),
     supabase.from('qualification_item_artifacts').select('qualification_item_id,artifact_id,artifacts(id,title,visibility,status)'),
     supabase.from('artifacts').select('id,title,visibility,status,origin,created_at,artifact_versions(id,version_number,file_name,mime_type,byte_size,uploaded_at,superseded_at)').eq('project_id', projectId).order('created_at', { ascending: false }),
+    supabase.from('artifact_access_grants').select('artifact_id,user_id,can_view,can_upload_version,can_comment,can_approve,can_manage'),
     supabase.from('project_asset_items').select('id,stable_key,status,internal_note,metadata,updated_at').eq('project_id', projectId).order('stable_key'),
     supabase.from('deliverables').select('id,stable_key,title,status,client_visible,approval_requested_at,approved_at,metadata').eq('project_id', projectId).order('title'),
     supabase.from('training_records').select('id,stable_key,status,signed_off_at,metadata').eq('project_id', projectId).order('stable_key'),
@@ -62,7 +63,7 @@ export async function loadProjectSections(projectId, organisationId = null) {
     organisationId ? supabase.from('organisation_memberships').select('user_id,role').eq('organisation_id', organisationId) : Promise.resolve({ data: [], error: null }),
     supabase.from('user_profiles').select('user_id,display_name,email'),
   ]);
-  const error = qualificationResult.error || qualificationArtifactsResult.error || artifactsResult.error || assetsResult.error || deliverablesResult.error || trainingResult.error || cyclesResult.error || auditResult.error || projectMembersResult.error || organisationMembersResult.error || profilesResult.error;
+  const error = qualificationResult.error || qualificationArtifactsResult.error || artifactsResult.error || artifactGrantsResult.error || assetsResult.error || deliverablesResult.error || trainingResult.error || cyclesResult.error || auditResult.error || projectMembersResult.error || organisationMembersResult.error || profilesResult.error;
   if (error) throw new Error(error.message);
   const cycleIds = new Set((cyclesResult.data || []).map(cycle => cycle.id));
   const [workItemsResult, timeEntriesResult] = cycleIds.size ? await Promise.all([
@@ -74,6 +75,7 @@ export async function loadProjectSections(projectId, organisationId = null) {
     qualification: qualificationResult.data || [],
     qualificationArtifacts: (qualificationArtifactsResult.data || []).filter(link => (qualificationResult.data || []).some(item => item.id === link.qualification_item_id)),
     artifacts: artifactsResult.data || [],
+    artifactGrants: artifactGrantsResult.data || [],
     assets: assetsResult.data || [],
     deliverables: deliverablesResult.data || [],
     training: trainingResult.data || [],
@@ -120,6 +122,8 @@ export const attachQualificationArtifact = ({ itemId, artifactId }) => callMutat
 export const detachQualificationArtifact = ({ itemId, artifactId }) => callMutation('detach_qualification_artifact', { p_item: itemId, p_artifact: artifactId });
 export const assignProjectMember = ({ projectId, userId }) => callMutation('assign_project_member', { p_project: projectId, p_user: userId });
 export const removeProjectMember = ({ projectId, userId }) => callMutation('remove_project_member', { p_project: projectId, p_user: userId });
+export const setArtifactUserAccess = ({ artifactId, userId, canView, canUploadVersion, canComment, canApprove, canManage }) => callMutation('set_artifact_user_access', { p_artifact: artifactId, p_user: userId, p_can_view: canView, p_can_upload_version: canUploadVersion, p_can_comment: canComment, p_can_approve: canApprove, p_can_manage: canManage });
+export const removeArtifactUserAccess = ({ artifactId, userId }) => callMutation('remove_artifact_user_access', { p_artifact: artifactId, p_user: userId });
 export const updateTraining = ({ recordId, status }) => callMutation('update_training_record', { p_record: recordId, p_status: status });
 export const openOperatingCycle = ({ projectId, period }) => callMutation('open_operating_cycle', { p_project: projectId, p_period: period });
 export const closeOperatingCycle = ({ cycleId }) => callMutation('close_operating_cycle', { p_cycle: cycleId });

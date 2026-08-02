@@ -2,7 +2,7 @@ import { supabase } from './supabase-client.js';
 import { artifactDownloadUrl, publishClientArtifactCopy, uploadProjectArtifact } from './artifact-repository.js';
 import { ICONS, autoResize } from './ui.js';
 import { COUNTABLE_STAGES, DONE_STAGES, getValidTransitions, isRescope, STAGE_META, stageFromDatabase } from './stages.js';
-import { addCycleTimeEntry, addCycleWorkItem, assignProjectMember, attachQualificationArtifact, closeOperatingCycle, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, removeProjectMember, saveTaskNote, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
+import { addCycleTimeEntry, addCycleWorkItem, assignProjectMember, attachQualificationArtifact, closeOperatingCycle, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, removeArtifactUserAccess, removeProjectMember, saveTaskNote, setArtifactUserAccess, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
 
 const projectId = new URLSearchParams(location.search).get('id');
 const projectName = document.querySelector('#projectName');
@@ -101,6 +101,8 @@ function renderSectionData(project, tasks) {
   }).join('')}</div>` : emptyState('No materialized asset requirements are available for this project yet.');
 
   sectionViews.artifacts.innerHTML = `<section class="project-data-panel artifact-upload-panel"><div><div class="section-label">Project documents</div><p class="project-data-note">Files are private by default, versioned rather than overwritten, and recorded in the project audit history.</p></div><form class="artifact-upload-form" data-action="artifact-upload"><input name="title" maxlength="180" placeholder="Document title (optional)"><select name="visibility"><option value="internal">Internal only</option><option value="client">Client-visible after approval</option><option value="restricted">Restricted internal access</option><option value="client_upload">Client-provided document</option></select><input name="file" type="file" required><button class="btn btn-primary btn-sm" type="submit">Upload document</button></form></section>${sections.artifacts.length ? `<div class="artifact-list">${sections.artifacts.map(artifact => { const versions = (artifact.artifact_versions || []).filter(version => !version.superseded_at).sort((a, b) => Number(b.version_number) - Number(a.version_number)); const current = versions[0]; const canPublish = ['internal', 'restricted'].includes(artifact.visibility) && artifact.status === 'available'; return `<article class="artifact-card"><div><div class="artifact-title">${esc(artifact.title)}</div><p class="project-data-note">${esc(artifact.visibility)} · ${esc(artifact.origin || 'upload')} · ${esc(artifact.status)}</p>${current ? `<p class="project-data-note">${esc(current.file_name)} · v${esc(current.version_number)}${current.byte_size ? ` · ${(Number(current.byte_size) / 1024).toFixed(1)} KB` : ''}</p>` : '<p class="project-data-note">Upload pending.</p>'}</div><div class="artifact-actions"><button class="btn btn-ghost btn-sm" type="button" data-action="artifact-download" data-artifact-id="${esc(artifact.id)}" ${current ? '' : 'disabled'}>Download</button>${canPublish ? `<button class="btn btn-ghost btn-sm" type="button" data-action="artifact-publish-client" data-artifact-id="${esc(artifact.id)}">Publish client copy</button>` : ''}<form class="artifact-version-form" data-action="artifact-version" data-artifact-id="${esc(artifact.id)}"><input name="file" type="file" required><button class="btn btn-ghost btn-sm" type="submit">Add version</button></form></div></article>`; }).join('')}</div>` : emptyState('No project documents have been uploaded yet.')}`;
+  const restrictedArtifacts = sections.canManage ? sections.artifacts.filter(artifact => artifact.visibility === 'restricted') : [];
+  if (restrictedArtifacts.length) sectionViews.artifacts.innerHTML += `<section class="project-data-panel artifact-grants-panel"><div class="section-label">Restricted document access</div><p class="project-data-note">Grant named internal users access to restricted documents. These grants are enforced in Supabase.</p>${restrictedArtifacts.map(artifact => { const grants = sections.artifactGrants.filter(grant => grant.artifact_id === artifact.id && grant.user_id); const granted = new Set(grants.map(grant => grant.user_id)); const available = sections.organisationMembers.filter(member => !granted.has(member.user_id)); return `<article class="artifact-grant-row"><strong>${esc(artifact.title)}</strong><form class="artifact-grant-form" data-action="artifact-grant" data-artifact-id="${esc(artifact.id)}"><select name="userId"><option value="">Grant a member…</option>${available.map(member => `<option value="${esc(member.user_id)}">${esc(memberName(member.user_id))} · ${esc(memberRoleLabel(member.role))}</option>`).join('')}</select><label><input name="canUpload" type="checkbox"> Add versions</label><label><input name="canApprove" type="checkbox"> Approve</label><button class="btn btn-ghost btn-sm" type="submit" ${available.length ? '' : 'disabled'}>Grant</button></form><div class="artifact-grant-list">${grants.length ? grants.map(grant => `<span>${esc(memberName(grant.user_id))} <button class="text-button" type="button" data-action="artifact-grant-remove" data-artifact-id="${esc(artifact.id)}" data-user-id="${esc(grant.user_id)}">Remove</button></span>`).join('') : 'No named access grants.'}</div></article>`; }).join('')}</section>`;
 
   sectionViews.deliverables.innerHTML = sections.deliverables.length ? `<div class="deliverable-list">${sections.deliverables.map(item => {
     const def = definitionByKey(project, 'deliverables', item.stable_key);
@@ -302,6 +304,12 @@ sectionViews.artifacts.addEventListener('submit', event => {
   if (!form || !workspace) return;
   event.preventDefault();
   const data = new FormData(form);
+  if (form.dataset.action === 'artifact-grant') {
+    const userId = data.get('userId');
+    if (!userId) { setStatus('Choose an organisation member first.'); return; }
+    void persistSection(() => setArtifactUserAccess({ artifactId: form.dataset.artifactId, userId: String(userId), canView: true, canUploadVersion: data.get('canUpload') === 'on', canComment: false, canApprove: data.get('canApprove') === 'on', canManage: false }));
+    return;
+  }
   const file = data.get('file');
   const isVersion = form.dataset.action === 'artifact-version';
   const button = form.querySelector('button[type="submit"]');
@@ -327,6 +335,10 @@ sectionViews.artifacts.addEventListener('click', event => {
   const button = event.target.closest('[data-action]');
   if (!button?.dataset.artifactId || !workspace) return;
   const artifactId = button.dataset.artifactId;
+  if (button.dataset.action === 'artifact-grant-remove' && button.dataset.userId) {
+    void persistSection(() => removeArtifactUserAccess({ artifactId, userId: button.dataset.userId }));
+    return;
+  }
   if (button.dataset.action === 'artifact-download') {
     setStatus('Preparing secure download…');
     void artifactDownloadUrl({ projectId: workspace.project.id, artifactId }).then(url => {
