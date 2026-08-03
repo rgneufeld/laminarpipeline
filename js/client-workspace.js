@@ -34,6 +34,24 @@ function requestLabel(request) {
   if (request.status === 'completed') return 'Completed by Laminar';
   return pretty(request.status);
 }
+function currentRequest(requests) {
+  return [...requests]
+    .sort((a, b) => {
+      const rank = request => request.status === 'requested' ? 2 : request.status === 'responded' ? 1 : 0;
+      return rank(b) - rank(a) || new Date(b.created_at) - new Date(a.created_at);
+    })[0] || null;
+}
+function currentRequestsByScope(requests) {
+  const byScope = new Map();
+  for (const request of requests) {
+    const scope = request.task_id ? `task:${request.task_id}` : request.qualification_item_id ? `qualification:${request.qualification_item_id}` : `request:${request.request_type}:${request.title}`;
+    if (!byScope.has(scope)) byScope.set(scope, []);
+    byScope.get(scope).push(request);
+  }
+  return [...byScope.values()]
+    .map(currentRequest)
+    .filter(request => request && ['requested', 'responded'].includes(request.status));
+}
 function projectCard(project, counts) {
   return `<a class="client-project-card" href="client.html?project=${encodeURIComponent(project.id)}"><div class="project-workspace-type">${esc(playbook(project)?.name || 'Laminar project')}</div><h2>${esc(project.name)}</h2><p>${esc(project.client_name || '')}</p><div class="project-workspace-meta">${counts.open || 0} response${counts.open === 1 ? '' : 's'} needed · ${counts.deliverables || 0} deliverable${counts.deliverables === 1 ? '' : 's'} shared</div></a>`;
 }
@@ -131,16 +149,32 @@ async function loadDetail() {
     grouped.get(phase.id).tasks.push(task);
   }
   const taskIds = new Set(tasks.map(task => task.id));
-  const approvalGroups = (approvalGroupsResult.data || []).filter(group => ['requested', 'responded'].includes(requests.find(request => request.id === group.request_id)?.status)).slice(0, 1);
-  const groupedItemIds = new Set(approvalGroups.flatMap(group => (group.qualification_approval_group_items || []).filter(item => item.requires_individual_approval).map(item => item.qualification_item_id)));
-  const groupRequestIds = new Set(approvalGroups.map(group => group.request_id));
-  const projectRequests = requests.filter(request => (!request.task_id || !taskIds.has(request.task_id)) && !groupRequestIds.has(request.id) && !groupedItemIds.has(request.qualification_item_id));
+  // A group can have prior cancelled/completed requests. They are audit history,
+  // not separate client work items. Keep every group request out of the generic
+  // request list and expose only the current request for each group.
+  const allApprovalGroups = (approvalGroupsResult.data || []).filter(group => requests.some(request => request.id === group.request_id));
+  const approvalGroupsByScope = new Map();
+  for (const group of allApprovalGroups) {
+    const request = requests.find(item => item.id === group.request_id);
+    const scope = request?.title || 'Qualification approval';
+    if (!approvalGroupsByScope.has(scope)) approvalGroupsByScope.set(scope, []);
+    approvalGroupsByScope.get(scope).push({ group, request });
+  }
+  const visibleApprovalGroups = [...approvalGroupsByScope.values()]
+    .map(candidates => candidates.sort((a, b) => {
+      const rank = candidate => candidate.request.status === 'requested' ? 2 : candidate.request.status === 'responded' ? 1 : 0;
+      return rank(b) - rank(a) || new Date(b.request.created_at) - new Date(a.request.created_at);
+    })[0])
+    .filter(({ request }) => ['requested', 'responded'].includes(request.status));
+  const groupedItemIds = new Set(allApprovalGroups.flatMap(group => (group.qualification_approval_group_items || []).filter(item => item.requires_individual_approval).map(item => item.qualification_item_id)));
+  const groupRequestIds = new Set(allApprovalGroups.map(group => group.request_id));
+  const projectRequests = currentRequestsByScope(requests.filter(request => (!request.task_id || !taskIds.has(request.task_id)) && !groupRequestIds.has(request.id) && !groupedItemIds.has(request.qualification_item_id)));
   const requestById = new Map(requests.map(request => [request.id, request]));
   title.textContent = project.name; intro.textContent = `${playbook(project)?.name || 'Laminar project'} · client workspace.`;
   list.hidden = true; detail.hidden = false;
   detail.innerHTML = `<a class="project-back" href="client.html">‹ All client projects</a>
     ${notifications.length ? `<section class="project-workspace-panel client-response-panel"><div class="section-label">New client requests</div><div class="client-notification-list">${notifications.map(note => `<article><strong>${esc(note.title)}</strong>${note.body ? `<p>${esc(note.body)}</p>` : ''}</article>`).join('')}</div></section>` : ''}
-    ${approvalGroups.length ? `<section class="project-workspace-panel client-response-panel"><div class="section-label">Approval packages</div>${approvalGroups.map(group => { const parent = requestById.get(group.request_id); const items = (group.qualification_approval_group_items || []).sort((a,b) => a.position - b.position); const priority = items.filter(item => item.requires_individual_approval); return parent ? `<article class="client-approval-package"><h2>Approval request: Qualifications</h2><p>There is a request for your approval for the Qualifications unit of the ${esc(playbook(project)?.name || 'Laminar playbook')}.</p><h3>This request is for approval of</h3><ul>${items.map(item => `<li>${esc(qualificationName(item.stable_key, project))}</li>`).join('')}</ul>${priority.length ? `<h3>Individual approvals also required</h3><p>The Qualifications unit cannot be completed until the following priority items have each received a response. Follow the instructions for each item below.</p>${priority.map(item => { const individual = requests.find(request => request.parent_request_id === parent.id && request.qualification_item_id === item.qualification_item_id) || requests.find(request => request.qualification_item_id === item.qualification_item_id); const complete = ['responded', 'completed'].includes(individual?.status); return `<div class="client-priority-item"><span class="${complete ? 'stage-pill stage-complete' : 'client-priority-pending'}">${complete ? 'Response submitted' : 'Response required'}</span><strong>${esc(qualificationName(item.stable_key, project))}</strong>${individual && !complete ? requestHtml(individual, isClientAdmin) : ''}</div>`; }).join('')}` : ''}${requestHtml(parent, isClientAdmin)}</article>` : ''; }).join('')}</section>` : ''}
+    ${visibleApprovalGroups.length ? `<section class="project-workspace-panel client-response-panel"><div class="section-label">Approval packages</div>${visibleApprovalGroups.map(({ group, request: parent }) => { const items = (group.qualification_approval_group_items || []).sort((a,b) => a.position - b.position); const priority = items.filter(item => item.requires_individual_approval); return `<article class="client-approval-package"><h2>Approval request: Qualifications</h2><p>There is a request for your approval for the Qualifications unit of the ${esc(playbook(project)?.name || 'Laminar playbook')}.</p><h3>This request is for approval of</h3><ul>${items.map(item => `<li>${esc(qualificationName(item.stable_key, project))}</li>`).join('')}</ul>${priority.length ? `<h3>Individual approvals also required</h3><p>The Qualifications unit cannot be completed until the following priority items have each received a response. Follow the instructions for each item below.</p>${priority.map(item => { const individual = currentRequest(requests.filter(request => request.parent_request_id === parent.id && request.qualification_item_id === item.qualification_item_id)); const complete = ['responded', 'completed'].includes(individual?.status); return `<div class="client-priority-item"><span class="${complete ? 'stage-pill stage-complete' : 'client-priority-pending'}">${complete ? 'Response submitted' : 'Response required'}</span><strong>${esc(qualificationName(item.stable_key, project))}</strong>${individual && !complete ? requestHtml(individual, isClientAdmin) : ''}</div>`; }).join('')}` : ''}${requestHtml(parent, isClientAdmin)}</article>`; }).join('')}</section>` : ''}
     ${projectRequests.length ? `<section class="project-workspace-panel client-response-panel"><div class="section-label">Client response required</div><p class="project-data-note">These requests need your input. Your notes, documents, completion, and approvals are recorded for both your team and Laminar.</p>${projectRequests.map(request => requestHtml(request, isClientAdmin)).join('')}</section>` : ''}
     <section class="project-workspace-panel"><div class="section-label">Project phases</div><p class="project-data-note">Expand a phase to see the client-facing steps, Laminar notes, and anything that needs a response from you.</p><div class="client-phase-list">${[...grouped.values()].sort((a,b) => (a.phase.position || 0) - (b.phase.position || 0)).map(({ phase, tasks: phaseTasks }) => { const open = phaseTasks.some(task => requests.some(request => request.task_id === task.id && request.status === 'requested')); const complete = phaseTasks.filter(task => ['complete', 'delivered'].includes(task.stage)).length; return `<details class="client-phase" ${open ? 'open' : ''}><summary><span>${esc(phase.label || `Phase ${phase.position || ''}`)}</span><strong>${esc(phase.title || 'Project phase')}</strong><small>${complete}/${phaseTasks.length} complete</small></summary><div class="client-phase-body">${phaseTasks.map(task => taskHtml(task, requests, isClientAdmin)).join('')}</div></details>`; }).join('') || '<p class="projects-empty">No client-facing steps have been shared yet.</p>'}</div></section>
     <div class="client-detail-grid"><section class="project-workspace-panel"><div class="section-label">Deliverables</div><div class="client-deliverable-list">${(deliverablesResult.data || []).length ? (deliverablesResult.data || []).map(row => `<article class="client-deliverable"><div><strong>${esc(row.title)}</strong><p>${esc(row.status === 'approved' ? 'Approved' : 'Ready for your approval')}</p></div>${row.status === 'delivered' ? `<button class="btn btn-primary btn-sm" data-deliverable-approve="${esc(row.id)}">Approve deliverable</button>` : '<span class="stage-pill stage-complete">Approved</span>'}</article>`).join('') : '<p class="projects-empty">No deliverables have been shared yet.</p>'}</div></section>
