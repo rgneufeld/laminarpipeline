@@ -2,7 +2,7 @@ import { supabase } from './supabase-client.js';
 import { artifactDownloadUrl, publishClientArtifactCopy, uploadProjectArtifact } from './artifact-repository.js';
 import { ICONS, autoResize } from './ui.js';
 import { COUNTABLE_STAGES, DONE_STAGES, getValidTransitions, isRescope, STAGE_META, stageFromDatabase } from './stages.js';
-import { addCycleTimeEntry, addCycleWorkItem, assignProjectMember, attachQualificationArtifact, closeOperatingCycle, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, removeArtifactUserAccess, removeProjectMember, requestQualificationApproval, requestQualificationApprovalGroup, saveTaskNote, setArtifactUserAccess, setQualificationApprovalPriority, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
+import { addCycleTimeEntry, addCycleWorkItem, assignProjectMember, attachQualificationArtifact, cancelClientResponseRequest, closeOperatingCycle, completeClientResponseRequest, detachQualificationArtifact, loadProjectSections, loadProjectWorkspace, openOperatingCycle, removeArtifactUserAccess, removeProjectMember, requestQualificationApproval, requestQualificationApprovalGroup, saveTaskNote, setArtifactUserAccess, setQualificationApprovalPriority, transitionTask, updateAssetItem, updateDeliverable, updateQualification, updateTraining } from './project-repository.js';
 
 const projectId = new URLSearchParams(location.search).get('id');
 const projectName = document.querySelector('#projectName');
@@ -71,22 +71,31 @@ function memberRoleLabel(role) { return String(role || '').replaceAll('_', ' ');
 function qualificationApprovalState(itemId) {
   return sections.qualificationApprovals.find(request => request.qualification_item_id === itemId)?.status || null;
 }
+function qualificationApprovalRequest(itemId) { return sections.qualificationApprovals.find(request => request.qualification_item_id === itemId) || null; }
 
 function qualificationRecordHtml(definitionItem, row, linked, availableDocuments, clientDocuments) {
   if (!row) return `<article class="qualification-record"><div class="project-check-row"><span>○</span>${esc(definitionItem.label)}</div></article>`;
-  const approvalStatus = qualificationApprovalState(row.id);
-  const approvalLabel = approvalStatus === 'approved' ? 'Client approved' : approvalStatus === 'open' ? 'Client response required' : approvalStatus ? displayStatus(approvalStatus) : 'Not requested';
+  const approvalRequest = qualificationApprovalRequest(row.id);
+  const approvalStatus = approvalRequest?.status || null;
+  const approvalLabel = approvalStatus === 'requested' ? 'Client response required' : approvalStatus === 'responded' ? 'Client response received' : approvalStatus === 'completed' ? 'Request completed' : approvalStatus === 'cancelled' ? 'Request cancelled' : 'Not requested';
   const approvalOpen = openQualificationApprovalId === row.id;
   return `<article class="qualification-record${row.complete ? ' complete' : ''}">
     <label class="project-check-row"><input type="checkbox" data-action="qualification-update" data-item-id="${esc(row.id)}" ${row.complete ? 'checked' : ''}><span>${row.complete ? '✓' : '○'}</span>${esc(definitionItem.label)}</label>
-    <div class="qualification-approval-bar"><span class="qualification-approval-status${approvalStatus ? ` is-${esc(approvalStatus)}` : ''}">${esc(approvalLabel)}</span><label class="qualification-priority-toggle"><input type="checkbox" data-action="qualification-approval-priority" data-item-id="${esc(row.id)}" ${row.client_approval_priority ? 'checked' : ''}> Priority approval required</label><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-approval-toggle" data-item-id="${esc(row.id)}">Request client approval</button></div>
-    ${approvalOpen ? `<form class="qualification-approval-form" data-action="qualification-approval-request" data-item-id="${esc(row.id)}" data-title="${esc(definitionItem.label)}"><textarea name="clientNote" rows="2" maxlength="6000" placeholder="Client-facing approval note. Internal rationale above remains private."></textarea><label>Attach client documents <select name="artifactIds" multiple size="${Math.min(Math.max(clientDocuments.length, 2), 4)}" ${clientDocuments.length ? '' : 'disabled'}>${clientDocuments.length ? clientDocuments.map(doc => `<option value="${esc(doc.id)}">${esc(doc.title)}</option>`).join('') : '<option>No approved client documents available</option>'}</select></label><label><input name="requiresSigned" type="checkbox"> Require signed document before approval</label><button class="btn btn-primary btn-sm" type="submit">Send approval request</button></form>` : ''}
+    <div class="qualification-approval-bar"><span class="qualification-approval-status${approvalStatus ? ` is-${esc(approvalStatus)}` : ''}">${esc(approvalLabel)}</span><label class="qualification-priority-toggle"><input type="checkbox" data-action="qualification-approval-priority" data-item-id="${esc(row.id)}" ${row.client_approval_priority ? 'checked' : ''}> Priority approval required</label>${approvalStatus === 'responded' ? `<button class="btn btn-primary btn-sm" type="button" data-action="qualification-approval-complete" data-request-id="${esc(approvalRequest.id)}">Complete request</button>` : ''}${['requested', 'responded'].includes(approvalStatus) ? `<button class="btn btn-ghost btn-sm" type="button" data-action="qualification-approval-cancel" data-request-id="${esc(approvalRequest.id)}">Cancel request</button>` : ''}${!['requested', 'responded'].includes(approvalStatus) ? `<button class="btn btn-ghost btn-sm" type="button" data-action="qualification-approval-toggle" data-item-id="${esc(row.id)}">Request client approval</button>` : ''}</div>
+    ${approvalOpen ? `<form class="qualification-approval-form" data-action="qualification-approval-request" data-item-id="${esc(row.id)}" data-title="${esc(definitionItem.label)}"><textarea name="clientNote" rows="2" maxlength="6000" placeholder="Client-facing approval note. Internal rationale above remains private."></textarea><label><input name="requiresSigned" type="checkbox"> Require a signed document upload before the client can respond</label><button class="btn btn-primary btn-sm" type="submit">Send approval request</button></form>` : ''}
     <textarea class="qualification-note" rows="2" data-qualification-note="${esc(row.id)}" placeholder="Internal rationale, decision context, or follow-up…">${esc(row.internal_note || '')}</textarea>
     <div class="qualification-evidence"><strong>Supporting documents</strong>${linked.length ? `<ul>${linked.filter(Boolean).map(doc => `<li>${esc(doc.title || 'Project document')} <button type="button" class="text-button" data-action="qualification-document-detach" data-item-id="${esc(row.id)}" data-artifact-id="${esc(doc.id)}">Remove</button></li>`).join('')}</ul>` : '<p>No supporting documents attached.</p>'}<div class="qualification-document-actions"><select data-qualification-document="${esc(row.id)}"><option value="">${availableDocuments.length ? 'Attach a project document…' : 'No uploaded project documents yet'}</option>${availableDocuments.filter(doc => !linked.some(attached => attached?.id === doc.id)).map(doc => `<option value="${esc(doc.id)}">${esc(doc.title)} · ${esc(doc.visibility)}</option>`).join('')}</select><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-document-attach" data-item-id="${esc(row.id)}" ${availableDocuments.length ? '' : 'disabled'}>Attach document</button><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-note-save" data-item-id="${esc(row.id)}">Save note</button></div></div>
   </article>`;
 }
 
-function groupApprovalControl() { return `<button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-request">Request group approval</button>`; }
+function groupApprovalControl() {
+  const group = sections.approvalGroups?.[0];
+  const request = Array.isArray(group?.client_response_requests) ? group.client_response_requests[0] : group?.client_response_requests;
+  if (request?.status === 'responded') return `<div class="qualification-group-state"><span>Group response received</span><button class="btn btn-primary btn-sm" type="button" data-action="qualification-group-approval-complete" data-request-id="${esc(request.id)}">Complete request</button><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-cancel" data-request-id="${esc(request.id)}">Cancel request</button></div>`;
+  if (request?.status === 'requested') return `<div class="qualification-group-state"><span>Group approval requested</span><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-cancel" data-request-id="${esc(request.id)}">Cancel request</button></div>`;
+  if (request?.status === 'completed') return '<div class="qualification-group-state"><span>Group request completed</span></div>';
+  return `<button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-request">Request group approval</button>`;
+}
 
 function showView(view, updateHash = false) {
   activeView = sectionViews[view] ? view : 'overview';
@@ -316,6 +325,22 @@ sectionViews.overview.addEventListener('click', event => {
     if (itemIds.length) void persistSection(() => requestQualificationApprovalGroup({ projectId: workspace.project.id, title: `${playbookName(workspace.project)} qualification approval`, clientNote: 'Please review and approve this qualification package.', itemIds }));
     return;
   }
+  if (button.dataset.action === 'qualification-group-approval-complete' && button.dataset.requestId) {
+    void persistSection(() => completeClientResponseRequest({ requestId: button.dataset.requestId }));
+    return;
+  }
+  if (button.dataset.action === 'qualification-group-approval-cancel' && button.dataset.requestId) {
+    if (confirm('Cancel this group approval request? Any open priority approval requests in the package will also be cancelled.')) void persistSection(() => cancelClientResponseRequest({ requestId: button.dataset.requestId }));
+    return;
+  }
+  if (button.dataset.action === 'qualification-approval-complete' && button.dataset.requestId) {
+    void persistSection(() => completeClientResponseRequest({ requestId: button.dataset.requestId }));
+    return;
+  }
+  if (button.dataset.action === 'qualification-approval-cancel' && button.dataset.requestId) {
+    if (confirm('Cancel this client approval request?')) void persistSection(() => cancelClientResponseRequest({ requestId: button.dataset.requestId }));
+    return;
+  }
   if (!button.dataset.itemId) return;
   const record = button.closest('.qualification-record');
   const itemId = button.dataset.itemId;
@@ -344,7 +369,7 @@ sectionViews.overview.addEventListener('submit', event => {
     const itemId = form.dataset.itemId;
     const itemTitle = form.dataset.title || 'Qualification item';
     openQualificationApprovalId = null;
-    void persistSection(() => requestQualificationApproval({ itemId, title: `Approval requested: ${itemTitle}`, clientNote: String(data.get('clientNote') || '').trim(), requiresSignedArtifact: data.get('requiresSigned') === 'on', artifactIds: data.getAll('artifactIds').map(String) }));
+    void persistSection(() => requestQualificationApproval({ itemId, title: `Approval requested: ${itemTitle}`, clientNote: String(data.get('clientNote') || '').trim(), requiresSignedArtifact: data.get('requiresSigned') === 'on' }));
     return;
   }
 });
