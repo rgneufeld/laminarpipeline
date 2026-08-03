@@ -5,27 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client workspace — Laminar Pipeline</title>
 <link rel="icon" type="image/png" href="images/Laminar_pipeline_logo.png">
-<link rel="stylesheet" href="css/app.css?v=0.1.2">
+<link rel="stylesheet" href="css/app.css?v=0.1.4">
 </head>
-<body>
-<button class="app-menu-toggle" id="appMenuToggle" aria-label="Open navigation" aria-expanded="false">☰</button>
-<div class="app-menu-scrim" id="appMenuScrim"></div>
-<aside class="app-menu" id="appMenu" aria-label="Application navigation">
-  <button class="app-menu-close" id="appMenuClose" aria-label="Close navigation">×</button>
-  <nav class="app-menu-links">
-    <a href="index.html">Dashboard</a>
-    <a href="projects.html">Projects</a>
-    <a href="client.html" aria-current="page">Client workspace</a>
-  </nav>
-  <div class="app-menu-bottom">
-    <a href="settings.html">Settings</a>
-    <span class="app-menu-user" id="appMenuUser">Checking session…</span>
-    <button class="app-menu-signout" id="appMenuSignout" type="button" hidden>Sign out</button>
-  </div>
-</aside>
+<body class="client-portal-page">
 <nav class="nav"><div class="nav-inner">
-  <a class="nav-logo" href="index.html"><img src="images/Laminar_pipeline_logo.png" alt="" class="nav-logo-img"><img src="images/Laminar_pipeline_wordmark.png" alt="Laminar Pipeline — Business Systems" class="nav-wordmark-img"></a>
+  <a class="nav-logo" href="client.html"><img src="images/Laminar_pipeline_logo.png" alt="" class="nav-logo-img"><img src="images/Laminar_pipeline_wordmark.png" alt="Laminar Pipeline — Business Systems" class="nav-wordmark-img"></a>
   <span class="nav-build">Build 0.1.0</span>
+  <div class="client-session"><span id="appMenuUser">Checking session…</span><button class="app-menu-signout" id="appMenuSignout" type="button" hidden>Sign out</button></div>
 </div></nav>
 
 <main class="wrap-wide client-workspace">
@@ -51,12 +37,7 @@
     </form>
   </div>
 </section>
-<script>
-const appMenu = document.getElementById('appMenu'); const appMenuToggle = document.getElementById('appMenuToggle'); const appMenuScrim = document.getElementById('appMenuScrim');
-const setAppMenu = open => { appMenu.classList.toggle('open', open); appMenuScrim.classList.toggle('open', open); appMenuToggle.setAttribute('aria-expanded', String(open)); };
-appMenuToggle.onclick = () => setAppMenu(!appMenu.classList.contains('open')); document.getElementById('appMenuClose').onclick = () => setAppMenu(false); appMenuScrim.onclick = () => setAppMenu(false);
-</script>
-<script type="module" src="js/dashboard-auth.js?v=0.1.3"></script>
-<script type="module" src="js/client-workspace.js?v=0.1.2"></script>
+<script type="module" src="js/dashboard-auth.js?v=0.1.4"></script>
+<script type="module" src="js/client-workspace.js?v=0.1.4"></script>
 </body>
 </html>

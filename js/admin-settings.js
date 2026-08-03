@@ -10,6 +10,7 @@ const organisationName = document.querySelector('#organisationName');
 const organisationRole = document.querySelector('#organisationRole');
 const memberAdminPanel = document.querySelector('#memberAdminPanel');
 const inviteForm = document.querySelector('#inviteForm');
+const inviteStatus = document.querySelector('#inviteStatus');
 const memberDirectory = document.querySelector('#memberDirectory');
 
 let sessionUser = null;
@@ -22,6 +23,7 @@ const roleLabels = {
 };
 
 function setStatus(value = '') { status.textContent = value; }
+function setInviteStatus(value = '', kind = '') { inviteStatus.textContent = value; inviteStatus.dataset.kind = kind; }
 function one(value) { return Array.isArray(value) ? value[0] || null : value || null; }
 function esc(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;' })[c]); }
 
@@ -97,11 +99,21 @@ inviteForm.addEventListener('submit', event => {
   const form = new FormData(inviteForm);
   void (async () => {
     setStatus('Inviting member…');
+    setInviteStatus('Sending invitation…');
     const { data, error } = await supabase.functions.invoke('invite-organisation-member', { body: { organisationId: currentMembership.organisation_id, email: form.get('email'), role: form.get('role') } });
-    if (error || data?.error) { setStatus(data?.error || error?.message || 'Invitation failed.'); return; }
+    if (error || data?.error) {
+      let detail = data?.error || error?.message || 'Invitation failed.';
+      if (!data?.error && error?.context instanceof Response) {
+        try { detail = (await error.context.clone().json())?.error || detail; } catch { /* retain the transport message */ }
+      }
+      setStatus(detail);
+      setInviteStatus(`Invitation failed: ${detail}`, 'error');
+      return;
+    }
     inviteForm.reset();
     await loadMembers();
     setStatus('Invitation sent and organisation role assigned.');
+    setInviteStatus(`Invitation sent to ${data.email}. Add this member to a project after they appear below.`, 'success');
   })();
 });
 

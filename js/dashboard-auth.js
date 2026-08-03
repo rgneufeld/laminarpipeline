@@ -22,6 +22,20 @@ function setSignedIn(email) {
   document.body.classList.toggle('is-authenticated', signedIn);
 }
 
+function clientPortalUrl() {
+  return `${location.origin}${location.pathname.replace(/[^/]*$/, 'client.html')}`;
+}
+
+async function enforceWorkspaceRoute(session) {
+  if (!session) return;
+  const { data: memberships, error } = await supabase.from('organisation_memberships').select('role').eq('user_id', session.user.id);
+  if (error) { setMessage(error.message); return; }
+  const roles = (memberships || []).map(membership => membership.role);
+  const clientOnly = roles.length > 0 && roles.every(role => role === 'client_admin' || role === 'client_collaborator');
+  document.body.classList.toggle('is-client-only', clientOnly);
+  if (clientOnly && !location.pathname.endsWith('/client.html')) location.replace(clientPortalUrl());
+}
+
 async function loadSession() {
   const { data, error } = await supabase.auth.getSession();
   if (error) {
@@ -30,11 +44,12 @@ async function loadSession() {
     return;
   }
   setSignedIn(data.session?.user.email);
+  await enforceWorkspaceRoute(data.session);
 }
 
 supabase.auth.onAuthStateChange((_event, session) => {
   setSignedIn(session?.user.email);
-  if (session) setMessage();
+  if (session) { setMessage(); void enforceWorkspaceRoute(session); }
 });
 
 form.addEventListener('submit', async (event) => {
