@@ -50,7 +50,7 @@ export async function loadProjectWorkspace(projectId) {
 
 export async function loadProjectSections(projectId, organisationId = null) {
   const [qualificationResult, qualificationArtifactsResult, clientRequestsResult, approvalGroupsResult, artifactsResult, artifactGrantsResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult, projectMembersResult, organisationMembersResult, profilesResult] = await Promise.all([
-    supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at,internal_note,client_approval_priority').eq('project_id', projectId),
+    supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at,internal_note,client_instruction,client_approval_priority').eq('project_id', projectId),
     supabase.from('qualification_item_artifacts').select('qualification_item_id,artifact_id,artifacts(id,title,visibility,status)'),
     supabase.from('client_response_requests').select('id,qualification_item_id,parent_request_id,status,title,created_at').eq('project_id', projectId).order('created_at', { ascending: false }),
     supabase.from('qualification_approval_groups').select('id,request_id,created_at,qualification_approval_group_items(qualification_item_id,requires_individual_approval)').eq('project_id', projectId).order('created_at', { ascending: false }),
@@ -123,6 +123,7 @@ async function callMutation(name, args) {
 export const updateAssetItem = ({ itemId, status, internalNote }) => callMutation('update_project_asset_item', { p_item: itemId, p_status: status, p_internal_note: internalNote });
 export const updateDeliverable = ({ deliverableId, status, clientVisible }) => callMutation('update_project_deliverable', { p_deliverable: deliverableId, p_status: status, p_client_visible: clientVisible });
 export const updateQualification = ({ itemId, complete, internalNote }) => callMutation('update_project_qualification', { p_item: itemId, p_complete: complete, p_internal_note: internalNote ?? null });
+export const saveQualificationClientInstruction = ({ itemId, instruction }) => callMutation('save_qualification_client_instruction', { p_item: itemId, p_instruction: instruction ?? '' });
 export const attachQualificationArtifact = ({ itemId, artifactId }) => callMutation('attach_qualification_artifact', { p_item: itemId, p_artifact: artifactId });
 export const detachQualificationArtifact = ({ itemId, artifactId }) => callMutation('detach_qualification_artifact', { p_item: itemId, p_artifact: artifactId });
 export const assignProjectMember = ({ projectId, userId }) => callMutation('assign_project_member', { p_project: projectId, p_user: userId });

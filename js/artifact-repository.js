@@ -2,7 +2,16 @@ import { supabase } from './supabase-client.js';
 
 async function invokeArtifactUpload(payload) {
   const { data, error } = await supabase.functions.invoke('artifact-upload', { body: payload });
-  if (error) throw new Error(error.message);
+  if (error) {
+    let message = error.message;
+    if (error.context instanceof Response) {
+      try {
+        const body = await error.context.clone().json();
+        if (typeof body?.error === 'string') message = body.error;
+      } catch { /* retain the transport error when the body is not JSON */ }
+    }
+    throw new Error(message);
+  }
   if (data?.error) throw new Error(data.error);
   return data;
 }
