@@ -3,6 +3,8 @@ import { supabase } from './supabase-client.js';
 const status = document.querySelector('#settingsStatus');
 const profileForm = document.querySelector('#profileForm');
 const displayName = document.querySelector('#displayName');
+const passwordForm = document.querySelector('#passwordForm');
+const newPassword = document.querySelector('#newPassword');
 const organisationPanel = document.querySelector('#organisationPanel');
 const organisationName = document.querySelector('#organisationName');
 const organisationRole = document.querySelector('#organisationRole');
@@ -73,6 +75,19 @@ profileForm.addEventListener('submit', event => {
     setStatus('Saving profile…');
     const { error } = await supabase.from('user_profiles').update({ display_name: displayName.value.trim() }).eq('user_id', sessionUser?.id);
     setStatus(error ? error.message : 'Profile saved.');
+  })();
+});
+
+passwordForm?.addEventListener('submit', event => {
+  event.preventDefault();
+  const password = newPassword.value;
+  if (password.length < 12) { setStatus('Use a password with at least 12 characters.'); return; }
+  void (async () => {
+    setStatus('Saving password…');
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) { setStatus(error.message); return; }
+    newPassword.value = '';
+    setStatus('Password saved. You can now sign in with email and password.');
   })();
 });
 

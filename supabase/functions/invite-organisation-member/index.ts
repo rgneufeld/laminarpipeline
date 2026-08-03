@@ -32,7 +32,7 @@ Deno.serve(async (request) => {
     if (canManage !== true) return Response.json({ error: 'organisation management access required' }, { status: 403, headers })
     if (role === 'organisation_owner' && callerRole !== 'organisation_owner' && isPlatformAdmin !== true) return Response.json({ error: 'only an organisation owner can invite another owner' }, { status: 403, headers })
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false, autoRefreshToken: false } })
-    const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email)
+    const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: 'https://rgneufeld.github.io/laminarpipeline/settings.html' })
     if (inviteError && !/already.*registered|already.*exists/i.test(inviteError.message)) throw new Error(inviteError.message)
     let userId = invited.user?.id
     if (!userId) {

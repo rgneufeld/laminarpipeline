@@ -5,6 +5,7 @@ const form = document.querySelector('#authForm');
 const emailInput = document.querySelector('#authEmail');
 const passwordInput = document.querySelector('#authPassword');
 const submit = document.querySelector('#authSubmit');
+const passwordSetup = document.querySelector('#authPasswordSetup');
 const message = document.querySelector('#authMessage');
 const menuUser = document.querySelector('#appMenuUser');
 const signOut = document.querySelector('#appMenuSignout');
@@ -50,6 +51,16 @@ form.addEventListener('submit', async (event) => {
   submit.disabled = false;
   submit.textContent = 'Sign in';
   if (error) setMessage(error.message);
+});
+
+passwordSetup?.addEventListener('click', async () => {
+  const email = emailInput.value.trim();
+  if (!email) { setMessage('Enter your email address first, then choose Set or reset password.'); emailInput.focus(); return; }
+  passwordSetup.disabled = true;
+  setMessage('Sending password setup email…');
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${location.origin}${location.pathname.replace(/[^/]*$/, 'settings.html')}` });
+  passwordSetup.disabled = false;
+  setMessage(error ? error.message : 'Password setup email sent. Open the newest email link, then choose a password in Settings.');
 });
 
 signOut.addEventListener('click', async () => {
