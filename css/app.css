@@ -1031,6 +1031,8 @@ select.app-select:focus { outline: 2px solid var(--accent); outline-offset: 2px;
 .qualification-group-approval summary { cursor:pointer; padding:10px 12px; color:var(--accent); font-size:12px; font-weight:700; }
 .qualification-group-options { display:grid; gap:6px; }
 .qualification-group-options label { color:var(--text); }
+.qualification-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+.qualification-heading .project-data-note { max-width:620px; }
 
 /* ── Time log ────────────────────────────────────────────────────────────────── */
 

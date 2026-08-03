@@ -86,10 +86,7 @@ function qualificationRecordHtml(definitionItem, row, linked, availableDocuments
   </article>`;
 }
 
-function groupApprovalForm(qualificationDefs, qualification, clientDocuments) {
-  const rows = qualificationDefs.map(item => ({ definition: item, row: qualification.get(item.id) })).filter(item => item.row);
-  return `<details class="qualification-group-approval"><summary>Request group approval</summary><form data-action="qualification-group-approval-request"><input name="title" maxlength="220" required placeholder="Approval package title"><textarea name="clientNote" rows="2" maxlength="6000" placeholder="Client-facing approval note and review instructions"></textarea><label>Attach client documents <select name="artifactIds" multiple size="${Math.min(Math.max(clientDocuments.length, 2), 4)}" ${clientDocuments.length ? '' : 'disabled'}>${clientDocuments.length ? clientDocuments.map(doc => `<option value="${esc(doc.id)}">${esc(doc.title)}</option>`).join('') : '<option>No approved client documents available</option>'}</select></label><div class="qualification-group-options">${rows.map(({ definition: item, row }) => `<label><input name="itemIds" type="checkbox" value="${esc(row.id)}"> ${esc(item.label)}${row.client_approval_priority ? ' · priority approval required' : ''}</label>`).join('')}</div><button class="btn btn-primary btn-sm" type="submit">Send group approval request</button></form></details>`;
-}
+function groupApprovalControl() { return `<button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-request">Request group approval</button>`; }
 
 function showView(view, updateHash = false) {
   activeView = sectionViews[view] ? view : 'overview';
@@ -124,7 +121,7 @@ function renderSectionData(project, tasks) {
       <article class="project-data-card"><span>Assets</span><strong>${sections.assets.filter(item => item.status === 'received').length} / ${sections.assets.length}</strong><p>Required and supporting inputs received.</p></article>
       <article class="project-data-card"><span>Deliverables</span><strong>${sections.deliverables.filter(item => item.status === 'approved').length} / ${sections.deliverables.length}</strong><p>Approved deliverables.</p></article>
     </div>
-    <section class="project-data-panel"><div class="section-label">Qualification</div><p class="project-data-note">Keep the internal rationale and supporting documents here. Client approvals are requested deliberately for an individual qualification or an approval package.</p>${sections.canManage ? groupApprovalForm(qualificationDefs, qualification, clientDocuments) : ''}${qualificationDefs.length ? `<div class="qualification-record-list">${qualificationDefs.map(item => qualificationRecordHtml(item, qualification.get(item.id), qualification.get(item.id) ? qualificationLinks.get(qualification.get(item.id).id) || [] : [], availableDocuments, clientDocuments)).join('')}</div>` : emptyState('No qualification items were defined for this playbook.')}</section>`;
+    <section class="project-data-panel"><div class="qualification-heading"><div><div class="section-label">Qualification</div><p class="project-data-note">Keep the internal rationale and supporting documents here. Client approvals are requested deliberately for an individual qualification or the whole package.</p></div>${sections.canManage ? groupApprovalControl() : ''}</div>${qualificationDefs.length ? `<div class="qualification-record-list">${qualificationDefs.map(item => qualificationRecordHtml(item, qualification.get(item.id), qualification.get(item.id) ? qualificationLinks.get(qualification.get(item.id).id) || [] : [], availableDocuments, clientDocuments)).join('')}</div>` : emptyState('No qualification items were defined for this playbook.')}</section>`;
 
   sectionViews.assets.innerHTML = sections.assets.length ? `<div class="asset-grid">${sections.assets.map(item => {
     const def = definitionByKey(project, 'assets', item.stable_key);
@@ -287,10 +284,12 @@ projectTabScrollPrev?.addEventListener('click', () => workspaceNav.scrollBy({ le
 projectTabScrollNext?.addEventListener('click', () => workspaceNav.scrollBy({ left: 260, behavior: 'smooth' }));
 
 async function persistSection(action) {
+  const restoreScrollY = window.scrollY;
   setStatus('Saving project section…');
   try {
     await action();
     await loadProject();
+    window.scrollTo(0, restoreScrollY);
     setStatus('Project section saved to Supabase and recorded in the audit history.');
   } catch (error) {
     setStatus(error instanceof Error ? error.message : 'Unable to save project section.');
@@ -311,7 +310,13 @@ sectionViews.overview.addEventListener('change', event => {
 });
 sectionViews.overview.addEventListener('click', event => {
   const button = event.target.closest('[data-action]');
-  if (!button?.dataset.itemId) return;
+  if (!button) return;
+  if (button.dataset.action === 'qualification-group-approval-request') {
+    const itemIds = sections.qualification.map(item => item.id);
+    if (itemIds.length) void persistSection(() => requestQualificationApprovalGroup({ projectId: workspace.project.id, title: `${playbookName(workspace.project)} qualification approval`, clientNote: 'Please review and approve this qualification package.', itemIds }));
+    return;
+  }
+  if (!button.dataset.itemId) return;
   const record = button.closest('.qualification-record');
   const itemId = button.dataset.itemId;
   if (button.dataset.action === 'qualification-note-save') {
@@ -341,11 +346,6 @@ sectionViews.overview.addEventListener('submit', event => {
     openQualificationApprovalId = null;
     void persistSection(() => requestQualificationApproval({ itemId, title: `Approval requested: ${itemTitle}`, clientNote: String(data.get('clientNote') || '').trim(), requiresSignedArtifact: data.get('requiresSigned') === 'on', artifactIds: data.getAll('artifactIds').map(String) }));
     return;
-  }
-  if (form.dataset.action === 'qualification-group-approval-request') {
-    const itemIds = data.getAll('itemIds').map(String);
-    if (!itemIds.length) { setStatus('Choose at least one qualification item for the approval package.'); return; }
-    void persistSection(() => requestQualificationApprovalGroup({ projectId: workspace.project.id, title: String(data.get('title') || '').trim(), clientNote: String(data.get('clientNote') || '').trim(), itemIds, artifactIds: data.getAll('artifactIds').map(String) }));
   }
 });
 sectionViews.assets.addEventListener('click', event => {
