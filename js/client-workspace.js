@@ -29,10 +29,14 @@ function qualificationName(stableKey, project) {
   return (version(project)?.definition?.qualification || []).find(item => item.id === stableKey)?.label || pretty(stableKey);
 }
 function requestLabel(request) {
-  if (request.status === 'requested') return 'Client response required';
+  if (request.status === 'requested') return request.request_type === 'approval' ? 'Approval required' : 'Client response required';
   if (request.status === 'responded') return 'Response sent to Laminar';
   if (request.status === 'completed') return 'Completed by Laminar';
   return pretty(request.status);
+}
+function requestTitle(request) {
+  if (request.request_type === 'approval') return pretty(request.approval_subject || request.title.replace(/^Priority approval required\s+[—-]\s*/i, ''));
+  return request.title;
 }
 function currentRequest(requests) {
   return [...requests]
@@ -88,17 +92,17 @@ function requestHtml(request, isClientAdmin) {
   const isOpen = request.status === 'requested';
   const documentRequired = request.requires_artifact || request.requires_signed_artifact;
   const documentMissing = documentRequired && !attachments.length;
-  const completeLabel = request.request_type === 'approval' ? 'Submit approval response' : request.request_type === 'review' ? 'Submit review response' : 'Submit response';
+  const completeLabel = request.request_type === 'approval' ? 'Send approval to Laminar' : request.request_type === 'review' ? 'Send review response' : 'Send response';
   return `<article class="client-request${isOpen ? ' client-request-open' : ''}" data-request-id="${esc(request.id)}">
-    <header><span class="client-request-status">${esc(requestLabel(request))}</span><strong>${esc(request.title)}</strong></header>
-    ${request.instructions ? `<p class="client-request-instructions">${esc(request.instructions)}</p>` : ''}
-    ${request.request_type === 'approval' ? `<p class="client-request-approval">Approval: ${esc(request.approval_subject || request.title)}${request.approval_version ? ` · ${esc(request.approval_version)}` : ''}</p>` : ''}
+    <header><span class="client-request-status">${esc(requestLabel(request))}</span><strong>${esc(requestTitle(request))}</strong></header>
+    ${request.instructions ? `<section class="client-request-instructions"><span>Instructions from Laminar</span><p>${esc(request.instructions)}</p></section>` : ''}
+    ${request.approval_version ? `<p class="client-request-version">Document version: ${esc(request.approval_version)}</p>` : ''}
     ${request.due_on ? `<p class="client-request-due">Requested by ${esc(request.due_on)}</p>` : ''}
-    <div class="client-request-messages">${messages.length ? messages.map(message => `<div class="client-request-message"><span>${esc(new Date(message.created_at).toLocaleString())}</span><p>${esc(message.body)}</p></div>`).join('') : '<p class="project-data-note">No notes have been added yet.</p>'}</div>
+    ${messages.length ? `<div class="client-request-messages"><span class="client-request-message-label">Notes and responses</span>${messages.map(message => `<div class="client-request-message"><span>${esc(new Date(message.created_at).toLocaleString())}</span><p>${esc(message.body)}</p></div>`).join('')}</div>` : ''}
     ${attachments.length ? `<div class="client-request-files">${attachments.map(link => `<button class="text-button" type="button" data-download="${esc(link.artifact_id)}">${esc(one(link.artifacts)?.title || 'Attached document')}</button>`).join('')}</div>` : ''}
-    ${isOpen ? `<form class="client-response-message-form" data-message-form="${esc(request.id)}"><textarea name="message" rows="2" maxlength="6000" placeholder="Add your response or question…"></textarea><button class="btn btn-ghost btn-sm" type="submit">Add note</button></form>
-    <form class="client-response-upload-form" data-upload-form="${esc(request.id)}"><input name="file" type="file" required><button class="btn btn-ghost btn-sm" type="submit">Upload requested document</button><span class="client-upload-state" data-upload-state></span></form>
-    ${request.request_type === 'approval' ? '<input class="client-signing-name" data-signing-name placeholder="Your signing name" autocomplete="name">' : ''}
+    ${isOpen ? `<form class="client-response-message-form" data-message-form="${esc(request.id)}"><textarea name="message" rows="2" maxlength="6000" placeholder="Optional note or question for Laminar"></textarea><button class="btn btn-ghost btn-sm" type="submit">Send note</button></form>
+    <form class="client-response-upload-form" data-upload-form="${esc(request.id)}"><label>${documentRequired ? 'Required document' : 'Supporting document (optional)'}<input name="file" type="file" ${documentRequired ? 'required' : ''}></label><button class="btn btn-ghost btn-sm" type="submit">Upload document</button><span class="client-upload-state" data-upload-state></span></form>
+    ${request.request_type === 'approval' ? '<label class="client-signing-name-label">Your full name<input class="client-signing-name" data-signing-name placeholder="Name used for this approval" autocomplete="name"></label>' : ''}
     <p class="project-data-note">${documentRequired ? 'A document upload is required before you can submit this response.' : 'When submitted, Laminar will review the response and complete the request.'}</p>
     ${request.request_type === 'approval' && !isClientAdmin ? '<p class="client-response-restriction">A client administrator must submit this formal approval.</p>' : ''}
     <button class="btn btn-primary btn-sm" data-submit-response="${esc(request.id)}" data-approval="${request.request_type === 'approval'}" ${request.request_type === 'approval' && !isClientAdmin ? 'disabled title="A client administrator must submit formal approval."' : ''} ${documentMissing ? 'disabled title="Upload the required document before submitting."' : ''}>${completeLabel}</button>` : ''}
