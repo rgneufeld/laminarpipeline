@@ -68,10 +68,30 @@ function memberName(userId) { const profile = sections?.profiles.find(item => it
 function memberEmail(userId) { return sections?.profiles.find(item => item.user_id === userId)?.email || ''; }
 function memberRoleLabel(role) { return String(role || '').replaceAll('_', ' '); }
 
-function qualificationApprovalState(itemId) {
-  return sections.qualificationApprovals.find(request => request.qualification_item_id === itemId)?.status || null;
+function currentRequest(requests) {
+  return [...requests].sort((a, b) => {
+    const rank = request => request.status === 'requested' ? 3 : request.status === 'responded' ? 2 : request.status === 'completed' ? 1 : 0;
+    return rank(b) - rank(a) || new Date(b.created_at) - new Date(a.created_at);
+  })[0] || null;
 }
-function qualificationApprovalRequest(itemId) { return sections.qualificationApprovals.find(request => request.qualification_item_id === itemId) || null; }
+function qualificationApprovalRequest(itemId) {
+  return currentRequest(sections.qualificationApprovals.filter(request => request.qualification_item_id === itemId));
+}
+function currentApprovalGroup() {
+  const candidates = (sections.approvalGroups || [])
+    .map(group => ({ group, request: sections.clientRequests.find(request => request.id === group.request_id) }))
+    .filter(candidate => candidate.request)
+    .filter(({ group, request }) => (group.qualification_approval_group_items || [])
+      .filter(item => item.requires_individual_approval)
+      .every(item => {
+        const child = currentRequest(sections.clientRequests.filter(candidate => candidate.parent_request_id === request.id && candidate.qualification_item_id === item.qualification_item_id));
+        return child && ['requested', 'responded', 'completed'].includes(child.status);
+      }));
+  return candidates.sort((a, b) => {
+    const rank = candidate => candidate.request.status === 'requested' ? 3 : candidate.request.status === 'responded' ? 2 : candidate.request.status === 'completed' ? 1 : 0;
+    return rank(b) - rank(a) || new Date(b.request.created_at) - new Date(a.request.created_at);
+  })[0] || null;
+}
 
 function qualificationRecordHtml(definitionItem, row, linked, availableDocuments, clientDocuments) {
   if (!row) return `<article class="qualification-record"><div class="project-check-row"><span>○</span>${esc(definitionItem.label)}</div></article>`;
@@ -89,8 +109,8 @@ function qualificationRecordHtml(definitionItem, row, linked, availableDocuments
 }
 
 function groupApprovalControl() {
-  const group = sections.approvalGroups?.[0];
-  const request = sections.clientRequests?.find(item => item.id === group?.request_id);
+  const current = currentApprovalGroup();
+  const request = current?.request;
   if (request?.status === 'responded') return `<div class="qualification-group-state"><span>Response received — Laminar review required</span><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-attach-documents" data-request-id="${esc(request.id)}">Include linked client documents</button><button class="btn btn-primary btn-sm" type="button" data-action="qualification-group-approval-complete" data-request-id="${esc(request.id)}">Complete request</button><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-cancel" data-request-id="${esc(request.id)}">Cancel request</button></div>`;
   if (request?.status === 'requested') return `<div class="qualification-group-state"><span>Approval request sent to client</span><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-attach-documents" data-request-id="${esc(request.id)}">Include linked client documents</button><button class="btn btn-ghost btn-sm" type="button" data-action="qualification-group-approval-cancel" data-request-id="${esc(request.id)}">Cancel request</button></div>`;
   if (request?.status === 'completed') return '<div class="qualification-group-state"><span>Approval request completed</span></div>';

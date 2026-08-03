@@ -52,6 +52,14 @@ function currentRequestsByScope(requests) {
     .map(currentRequest)
     .filter(request => request && ['requested', 'responded'].includes(request.status));
 }
+function groupHasCurrentPriorityRequests(group, parent, requests) {
+  return (group.qualification_approval_group_items || [])
+    .filter(item => item.requires_individual_approval)
+    .every(item => {
+      const request = currentRequest(requests.filter(candidate => candidate.parent_request_id === parent.id && candidate.qualification_item_id === item.qualification_item_id));
+      return request && ['requested', 'responded', 'completed'].includes(request.status);
+    });
+}
 function projectCard(project, counts) {
   return `<a class="client-project-card" href="client.html?project=${encodeURIComponent(project.id)}"><div class="project-workspace-type">${esc(playbook(project)?.name || 'Laminar project')}</div><h2>${esc(project.name)}</h2><p>${esc(project.client_name || '')}</p><div class="project-workspace-meta">${counts.open || 0} response${counts.open === 1 ? '' : 's'} needed · ${counts.deliverables || 0} deliverable${counts.deliverables === 1 ? '' : 's'} shared</div></a>`;
 }
@@ -165,11 +173,10 @@ async function loadDetail() {
       const rank = candidate => candidate.request.status === 'requested' ? 2 : candidate.request.status === 'responded' ? 1 : 0;
       return rank(b) - rank(a) || new Date(b.request.created_at) - new Date(a.request.created_at);
     })[0])
-    .filter(({ request }) => ['requested', 'responded'].includes(request.status));
+    .filter(({ group, request }) => ['requested', 'responded'].includes(request.status) && groupHasCurrentPriorityRequests(group, request, requests));
   const groupedItemIds = new Set(allApprovalGroups.flatMap(group => (group.qualification_approval_group_items || []).filter(item => item.requires_individual_approval).map(item => item.qualification_item_id)));
   const groupRequestIds = new Set(allApprovalGroups.map(group => group.request_id));
   const projectRequests = currentRequestsByScope(requests.filter(request => (!request.task_id || !taskIds.has(request.task_id)) && !groupRequestIds.has(request.id) && !groupedItemIds.has(request.qualification_item_id)));
-  const requestById = new Map(requests.map(request => [request.id, request]));
   title.textContent = project.name; intro.textContent = `${playbook(project)?.name || 'Laminar project'} · client workspace.`;
   list.hidden = true; detail.hidden = false;
   detail.innerHTML = `<a class="project-back" href="client.html">‹ All client projects</a>

@@ -52,8 +52,8 @@ export async function loadProjectSections(projectId, organisationId = null) {
   const [qualificationResult, qualificationArtifactsResult, clientRequestsResult, approvalGroupsResult, artifactsResult, artifactGrantsResult, assetsResult, deliverablesResult, trainingResult, cyclesResult, auditResult, projectMembersResult, organisationMembersResult, profilesResult] = await Promise.all([
     supabase.from('project_qualification_items').select('id,stable_key,complete,completed_at,internal_note,client_approval_priority').eq('project_id', projectId),
     supabase.from('qualification_item_artifacts').select('qualification_item_id,artifact_id,artifacts(id,title,visibility,status)'),
-    supabase.from('client_response_requests').select('id,qualification_item_id,status,title,created_at').eq('project_id', projectId).order('created_at', { ascending: false }),
-    supabase.from('qualification_approval_groups').select('id,request_id,created_at').eq('project_id', projectId).order('created_at', { ascending: false }),
+    supabase.from('client_response_requests').select('id,qualification_item_id,parent_request_id,status,title,created_at').eq('project_id', projectId).order('created_at', { ascending: false }),
+    supabase.from('qualification_approval_groups').select('id,request_id,created_at,qualification_approval_group_items(qualification_item_id,requires_individual_approval)').eq('project_id', projectId).order('created_at', { ascending: false }),
     supabase.from('artifacts').select('id,title,visibility,status,origin,approved_at,created_at,artifact_versions(id,version_number,file_name,mime_type,byte_size,uploaded_at,superseded_at)').eq('project_id', projectId).order('created_at', { ascending: false }),
     supabase.from('artifact_access_grants').select('artifact_id,user_id,can_view,can_upload_version,can_comment,can_approve,can_manage'),
     supabase.from('project_asset_items').select('id,stable_key,status,internal_note,metadata,updated_at').eq('project_id', projectId).order('stable_key'),
